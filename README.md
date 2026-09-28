@@ -27,6 +27,12 @@ open QAtelier.xcodeproj
 
 커밋마다 깃허브 액션(`.github/workflows/ios.yml`)이 시뮬레이터용으로 빌드하고, 아이폰 · 아이패드 시뮬레이터에 깔아
 밝은 · 어두운 모드 화면과 켜는 장면 영상을 찍어 올립니다(`scripts/shoot.sh`).
+켜는 장면은 8배 느리게 녹화하므로, 받은 결과는 `tools/shots.py` 로 실제 속도로 되돌려 봅니다.
+
+```bash
+gh run download <실행 번호> -R lierline/Q-Atelier-iOS -n ios-shots -D shots
+python tools/shots.py shots/out
+```
 
 ## 사용 허가
 
