@@ -1,0 +1,104 @@
+# 실제 아이폰 · 아이패드용(시뮬레이터용이 아님)으로 빌드해 설치 파일(.ipa)로 묶는다. 애플 서명은 없다.
+# 아이폰은 서명 없는 파일을 설치하지 않으므로, 이 파일은 서명 도구에 넣을 재료이자 «기기용으로도 빌드되는가» 검사다.
+# 촬영(ios.yml)과 묶음이 달라 서로의 실행을 취소하지 않는다.
+name: iOS 기기용 설치 파일
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "QAtelier/**"
+      - "project.yml"
+      - ".github/workflows/ios-device.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-device-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ipa:
+    name: 기기용 빌드 · 설치 파일 묶기(서명 없음)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 도구 판 확인
+        run: xcodebuild -version
+
+      - name: XcodeGen 받기
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          XG=$(find "$RUNNER_TEMP/xcodegen" -type f -name xcodegen -perm -u+x | head -1)
+          test -n "$XG"
+          echo "XCODEGEN=$XG" >> "$GITHUB_ENV"
+          "$XG" --version
+
+      - name: Xcode 프로젝트 만들기
+        run: '"$XCODEGEN" generate'
+
+      - name: 기기용 빌드(Release)
+        run: |
+          set +e
+          xcodebuild -project QAtelier.xcodeproj -scheme QAtelier -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build > build-device.log 2>&1
+          code=$?
+          set -e
+          grep -E "(error|warning): " build-device.log | sort -u | head -80 || true
+          tail -3 build-device.log
+          exit $code
+
+      # 파일이 생겼다는 것만으로 끝내지 않는다. 기기용 실행 파일인지 · 앱 정보가 맞는지 읽어서 확인한다
+      - name: 설치 파일로 묶고 확인
+        run: |
+          set -euo pipefail
+          APP=build/Build/Products/Release-iphoneos/QAtelier.app
+          BIN="$APP/QAtelier"
+          test -x "$BIN"
+          lipo -info "$BIN"
+          xcrun vtool -show-build "$BIN" | tee vtool.txt
+          grep -Eiq '^[[:space:]]*platform[[:space:]]+(IOS|2)[[:space:]]*$' vtool.txt || { echo "기기용(IOS)이 아님"; exit 1; }
+          PL="$APP/Info.plist"
+          ID=$(plutil -extract CFBundleIdentifier raw "$PL")
+          VER=$(plutil -extract CFBundleShortVersionString raw "$PL")
+          BLD=$(plutil -extract CFBundleVersion raw "$PL")
+          test "$ID" = "app.medqraft.qatelier"
+          # 파이프 대신 변수로 넘긴다(pipefail 에서 grep -q 가 먼저 끝나면 앞 명령이 끊겨 단계가 실패할 수 있다)
+          PLAT=$(plutil -extract CFBundleSupportedPlatforms json -o - "$PL")
+          grep -q iPhoneOS <<< "$PLAT"
+          echo "앱 식별자 $ID · 판 $VER($BLD) · 최소 iOS $(plutil -extract MinimumOSVersion raw "$PL") · 기기 $(plutil -extract UIDeviceFamily json -o - "$PL")"
+          codesign -dv "$APP" 2>&1 | head -2 || true
+          NAME="QAtelier-${VER}-${BLD}-unsigned.ipa"
+          mkdir -p ipa/Payload dist
+          cp -R "$APP" ipa/Payload/
+          (cd ipa && zip -qry "../dist/$NAME" Payload)
+          LIST=$(unzip -l "dist/$NAME")
+          grep -q "Payload/QAtelier.app/QAtelier$" <<< "$LIST"
+          (cd dist && shasum -a 256 "$NAME" | tee "$NAME.sha256")
+          {
+            echo "파일: $NAME"
+            echo "커밋: $GITHUB_SHA"
+            echo "앱 식별자: $ID · 판 $VER($BLD)"
+            echo "만든 때(UTC): $(date -u '+%Y-%m-%d %H:%M')"
+            xcodebuild -version | tr '\n' ' '; echo
+            echo "서명: 없음. 아이폰에 깔려면 애플 계정으로 서명해야 한다."
+          } > dist/BUILD-INFO.txt
+          cat dist/BUILD-INFO.txt
+          ls -l dist
+
+      - name: 결과 올리기
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: |
+            dist/
+            build-device.log
+          retention-days: 30
+          if-no-files-found: warn

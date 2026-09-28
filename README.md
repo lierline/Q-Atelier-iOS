@@ -34,6 +34,13 @@ gh run download <실행 번호> -R lierline/Q-Atelier-iOS -n ios-shots -D shots
 python tools/shots.py shots/out
 ```
 
+실제 기기용 설치 파일(.ipa)은 `.github/workflows/ios-device.yml` 이 앱 코드가 바뀔 때마다 만듭니다(손으로도 돌릴 수 있습니다).
+애플 서명이 없는 파일이라 아이폰 · 아이패드에 바로 깔리지는 않습니다. 애플 계정으로 서명해야 설치됩니다.
+
+```bash
+gh run download <실행 번호> -R lierline/Q-Atelier-iOS -n ios-ipa -D ipa
+```
+
 ## 사용 허가
 
 이 저장소의 소스 코드는 메드크래프트의 것이며 사용 허가를 주지 않습니다(All rights reserved).
