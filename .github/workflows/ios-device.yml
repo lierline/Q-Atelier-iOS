@@ -1,6 +1,7 @@
-# 실제 아이폰 · 아이패드용(시뮬레이터용이 아님)으로 빌드해 설치 파일(.ipa)로 묶는다. 애플 서명은 없다.
-# 아이폰은 서명 없는 파일을 설치하지 않으므로, 이 파일은 서명 도구에 넣을 재료이자 «기기용으로도 빌드되는가» 검사다.
-# 촬영(ios.yml)과 묶음이 달라 서로의 실행을 취소하지 않는다.
+# 실제 아이폰 · 아이패드용(시뮬레이터용이 아님)으로 묶어 설치 파일(.ipa)을 만든다. 애플 서명은 없다.
+# 아이폰은 서명 없는 파일을 설치하지 않으므로, 이 파일은 «기기용으로도 빌드되는가» 검사이자 서명 도구에 넣을 재료다.
+# 묶는 방법은 TestFlight 올리기(testflight.yml)와 똑같이 해서, 열쇠가 없어도 그 앞 단계까지는 커밋마다 돌려 본다.
+# 촬영(ios.yml)과 묶음(concurrency)이 달라 서로의 실행을 취소하지 않는다.
 name: iOS 기기용 설치 파일
 
 on:
@@ -9,6 +10,7 @@ on:
     paths:
       - "QAtelier/**"
       - "project.yml"
+      - "ci/**"
       - ".github/workflows/ios-device.yml"
   workflow_dispatch:
 
@@ -21,18 +23,19 @@ concurrency:
 
 jobs:
   ipa:
-    name: 기기용 빌드 · 설치 파일 묶기(서명 없음)
+    name: 기기용 묶기 · 설치 파일(서명 없음)
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: 도구 판 확인
         run: xcodebuild -version
 
-      - name: XcodeGen 받기
+      - name: XcodeGen 받기(해시 확인)
         run: |
           curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          echo "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
           XG=$(find "$RUNNER_TEMP/xcodegen" -type f -name xcodegen -perm -u+x | head -1)
           test -n "$XG"
@@ -42,12 +45,29 @@ jobs:
       - name: Xcode 프로젝트 만들기
         run: '"$XCODEGEN" generate'
 
-      - name: 기기용 빌드(Release)
+      # TestFlight 올리기가 쓰는 내보내기 설정의 항목을 이 Xcode 가 아는지 본다(모르는 항목은 올릴 때에야 드러난다)
+      - name: 내보내기 설정 확인
         run: |
+          set -euo pipefail
+          plutil -lint ci/ExportOptions-testflight.plist
+          HELP=$(xcodebuild -help 2>&1)
+          for k in method destination signingStyle teamID manageAppVersionAndBuildNumber testFlightInternalTestingOnly uploadSymbols; do
+            grep -Eq "^[[:space:]]+$k : " <<< "$HELP" || { echo "::error::xcodebuild 가 모르는 내보내기 항목: $k"; exit 1; }
+          done
+          grep -q "app-store-connect" <<< "$HELP" || { echo "::error::method app-store-connect 를 모름"; exit 1; }
+          echo "내보내기 항목 7개와 method app-store-connect 를 이 Xcode 가 압니다"
+
+      # TestFlight 올리기와 같은 명령(빌드 번호 · 서명 없음). 다른 점은 올리지 않는 것뿐이다
+      - name: 묶기(archive · 서명 없음)
+        run: |
+          BUILD_NO=$(date -u +%Y%m%d.%H%M)
+          echo "BUILD_NO=$BUILD_NO" >> "$GITHUB_ENV"
           set +e
           xcodebuild -project QAtelier.xcodeproj -scheme QAtelier -configuration Release \
-            -destination 'generic/platform=iOS' -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO build > build-device.log 2>&1
+            -destination 'generic/platform=iOS' -archivePath build/QAtelier.xcarchive \
+            CURRENT_PROJECT_VERSION="$BUILD_NO" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive > build-device.log 2>&1
           code=$?
           set -e
           grep -E "(error|warning): " build-device.log | sort -u | head -80 || true
@@ -58,17 +78,20 @@ jobs:
       - name: 설치 파일로 묶고 확인
         run: |
           set -euo pipefail
-          APP=build/Build/Products/Release-iphoneos/QAtelier.app
+          AI=build/QAtelier.xcarchive/Info.plist
+          APP=build/QAtelier.xcarchive/Products/Applications/QAtelier.app
           BIN="$APP/QAtelier"
           test -x "$BIN"
           lipo -info "$BIN"
           xcrun vtool -show-build "$BIN" | tee vtool.txt
-          grep -Eiq '^[[:space:]]*platform[[:space:]]+(IOS|2)[[:space:]]*$' vtool.txt || { echo "기기용(IOS)이 아님"; exit 1; }
+          grep -Eiq '^[[:space:]]*platform[[:space:]]+(IOS|2)[[:space:]]*$' vtool.txt || { echo "::error::기기용(IOS)이 아님"; exit 1; }
           PL="$APP/Info.plist"
           ID=$(plutil -extract CFBundleIdentifier raw "$PL")
           VER=$(plutil -extract CFBundleShortVersionString raw "$PL")
           BLD=$(plutil -extract CFBundleVersion raw "$PL")
           test "$ID" = "app.medqraft.qatelier"
+          test "$BLD" = "$BUILD_NO" || { echo "::error::빌드 번호가 안 들어감($BLD)"; exit 1; }
+          test "$(plutil -extract ApplicationProperties.CFBundleVersion raw "$AI")" = "$BUILD_NO"
           # 파이프 대신 변수로 넘긴다(pipefail 에서 grep -q 가 먼저 끝나면 앞 명령이 끊겨 단계가 실패할 수 있다)
           PLAT=$(plutil -extract CFBundleSupportedPlatforms json -o - "$PL")
           grep -q iPhoneOS <<< "$PLAT"
@@ -94,7 +117,7 @@ jobs:
 
       - name: 결과 올리기
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ios-ipa
           path: |

@@ -5,6 +5,13 @@ name: iOS 시뮬레이터 빌드
 on:
   push:
     branches: [main]
+    # 촬영과 상관없는 것만 바뀐 커밋은 30분 넘는 촬영을 돌리지 않는다(돌던 촬영도 취소되지 않는다)
+    paths-ignore:
+      - "README.md"
+      - "tools/**"
+      - "ci/**"
+      - ".github/workflows/ios-device.yml"
+      - ".github/workflows/testflight.yml"
   pull_request:
   workflow_dispatch:
 

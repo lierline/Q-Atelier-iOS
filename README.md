@@ -41,6 +41,17 @@ python tools/shots.py shots/out
 gh run download <실행 번호> -R lierline/Q-Atelier-iOS -n ios-ipa -D ipa
 ```
 
+TestFlight 로 올리는 일은 `.github/workflows/testflight.yml` 이 합니다(앱 코드가 바뀔 때마다 · 손으로도).
+서명 없이 묶은 뒤, 내보낼 때 애플 서버가 쥔 배포 인증서로 서명해 곧바로 올립니다. 그래서 빌드하는 맥에 인증서를 둘 필요가 없습니다.
+열쇠는 저장소의 `testflight` 환경(main 에서만 열림) 비밀값에만 둡니다.
+
+| 비밀값 | 내용 |
+|---|---|
+| `ASC_KEY_ID` · `ASC_ISSUER_ID` · `ASC_KEY_P8` | App Store Connect API 팀 열쇠(역할 «관리». 애플 서버의 배포 인증서는 이 역할만 씁니다) · `.p8` 는 파일 전체 |
+| `APPLE_TEAM_ID` | 애플 개발자 계정의 팀 ID |
+
+비밀값이 없으면 올리기를 건너뜁니다. App Store Connect 에 이 앱(`app.medqraft.qatelier`)이 먼저 만들어져 있어야 올라갑니다.
+
 ## 사용 허가
 
 이 저장소의 소스 코드는 메드크래프트의 것이며 사용 허가를 주지 않습니다(All rights reserved).
