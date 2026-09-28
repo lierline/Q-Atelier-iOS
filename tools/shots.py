@@ -11,11 +11,13 @@
   · <기기>.gif: 밝은 · 어두운 모드 장면을 나란히
 장면 길이(첫 획 ~ 사이트 첫 화면)와 장면 안에서 가장 길게 멈춘 때도 찍어 준다. 부하가 큰 깃허브 맥에서 잰 값이라
 실제 기기와 다르다.
+앱 기록(<기기>-log.txt)으로는 켤 때마다 장면이 첫 그림 뒤에 걷혔는지 본다(무엇이 걷게 했는지 · 첫 그림에서 다 걷힘까지).
 """
 import glob
 import os
 import re
 import sys
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -178,9 +180,68 @@ def pair(light, dark, dst, width):
     print(f"{os.path.basename(dst)} · {len(imgs)} 장")
 
 
+LOG_LINE = re.compile(r"\S+ (\d\d:\d\d:\d\d\.\d+) .*\[app\.medqraft\.qatelier:app\] (.*)$")
+EXIT_S = 0.28  # LaunchView.exitMs: 걷을 때 흐려지는 시간
+# scripts/shoot.sh 가 앱을 켜는 차례(시간 예산에 걸려 건너뛰면 어긋난다)
+LAUNCH_LABELS = ("설치 뒤 첫 켜기", "느린 녹화 · 밝은", "느린 녹화 · 어두운", "실제 속도 · 밝은", "실제 속도 · 어두운")
+
+
+def launches(path):
+    """앱 기록을 켤 때마다 끊어, «앱을 켭니다» 부터 잰 초로 화면 · 다 불러옴 · 첫 그림 · 걷기 요청 · 걷음을 뽑는다"""
+    rows, cur = [], None
+    for raw in open(path, encoding="utf-8"):
+        m = LOG_LINE.match(raw.strip())
+        if not m:
+            continue
+        t = datetime.strptime(m.group(1), "%H:%M:%S.%f")
+        msg = m.group(2)
+        if msg.startswith("앱을 켭니다"):
+            cur = {"start": t, "reasons": []}
+            rows.append(cur)
+            continue
+        if cur is None:
+            continue
+        sec = (t - cur["start"]).total_seconds()
+        if msg.startswith("화면:"):
+            cur.setdefault("commit", sec)
+        elif msg.startswith("다 불러옴"):
+            cur.setdefault("finish", sec)
+        elif msg == "첫 그림":
+            cur.setdefault("painted", sec)
+        elif msg.startswith("걷기 요청:"):
+            cur["reasons"].append((sec, msg.split(":", 1)[1].strip()))
+        elif msg.startswith("켜는 장면을 걷었"):
+            cur.setdefault("hidden", sec)
+    return rows
+
+
+def hide_order(root):
+    """장면이 첫 그림 뒤에 걷히기 시작했는지 본다. 첫 그림 → 다 걷힘이 흐려지는 시간보다 짧으면 먼저 걷힌 것"""
+    early = 0
+    for path in sorted(glob.glob(os.path.join(root, "*-log.txt"))):
+        device = os.path.basename(path)[:-len("-log.txt")]
+        rows = launches(path)
+        print(f"{device} 앱 기록 · 켠 뒤 초(화면 / 다 불러옴 / 첫 그림 / 걷기 요청 / 다 걷힘)")
+        for i, r in enumerate(rows):
+            label = LAUNCH_LABELS[i] if len(rows) == len(LAUNCH_LABELS) else f"{i + 1}번째"
+            p, h = r.get("painted"), r.get("hidden")
+            req = r["reasons"][0] if r["reasons"] else None
+            cells = [f"{r[k]:.2f}" if k in r else "-" for k in ("commit", "finish", "painted")]
+            req_txt = f"{req[0]:.2f}({req[1]})" if req else "-"
+            hid = f"{h:.2f}" if h is not None else "-"
+            gap = f"{h - p:.2f}" if p is not None and h is not None else "-"
+            print(f"  {label}: {' / '.join(cells)} / {req_txt} / {hid} · 첫 그림 → 다 걷힘 {gap}")
+            if p is not None and h is not None and h - p < EXIT_S:
+                print(f"    먼저 걷힘: 흐려지기가 첫 그림보다 {EXIT_S - (h - p):.2f}초 먼저 시작")
+                early += 1
+    if early:
+        print(f"첫 그림보다 먼저 걷힌 켜기 {early}번")
+
+
 root = sys.argv[1]
 out = os.path.join(root, "_view")
 os.makedirs(out, exist_ok=True)
+hide_order(root)
 sheets(root, out)
 fast = {}
 for src in sorted(glob.glob(os.path.join(root, f"*-launch-x{SLOW}.mp4"))):
