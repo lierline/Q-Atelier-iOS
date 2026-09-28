@@ -31,6 +31,14 @@ enum AppConfig {
     /// 사이트가 앱 안인 줄 아는 표시(사이트 lib/nav/phone-mode.ts 의 isAppUserAgent · 안드로이드와 같은 글자)
     static var userAgentToken: String { "QAtelierApp/" + version }
 
+    /// 웹 엔진이 브라우저 표시 끝에 붙이는 앱 이름(WKWebViewConfiguration.applicationNameForUserAgent).
+    /// 폰은 iOS 웹 화면의 기본값(Mobile/15E148)을 남기고 그 뒤에 붙인다. 패드는 데스크톱 방식이라 기본 표시에
+    /// Mobile 이 없으니 앱 표시만 붙인다(안드로이드도 폰에만 Mobile 이 있다).
+    /// 웹 화면에 기본 표시를 물어본 뒤 붙이면 첫 화면을 여는 일이 그만큼 늦어져 이 길을 쓴다
+    static func userAgentAppName(phone: Bool) -> String {
+        phone ? "Mobile/15E148 " + userAgentToken : userAgentToken
+    }
+
     static func isOurs(_ url: URL?) -> Bool {
         guard let url, url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return false }
         return ourHosts.contains(host)

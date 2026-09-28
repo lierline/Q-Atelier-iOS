@@ -29,6 +29,10 @@ final class LaunchView: UIView {
     private static let waitFadeMs = 300.0
     private static let waitPeriodMs = 1100.0
     private static let exitMs = 280.0
+    /// 장면 시계가 한 번(한 장)에 나아가는 최대 폭(초). 켜는 동안 앱이 잠깐 멈췄다 풀리면 그 사이를 건너뛰지 않고
+    /// 이어 그린다(깃허브 맥의 느린 시뮬레이터에서 첫 장면이 다 그려진 Q 로 시작한 것을 보고 넣음).
+    /// 보통 폰은 한 장이 1/60 · 1/120초라 이 폭에 닿지 않는다
+    private static let maxStep: CFTimeInterval = 1.0 / 24
 
     /// 붓 Q 그림 안의 자리(0~1). 둥근 획은 가운데(0.5, 0.44)를 돌며 드러나고, 꼬리 · 붓은 사선(왼쪽 70% → 오른쪽 86%)
     /// 아래에서 왼쪽부터 드러난다. 수평선으로 가르면 오른쪽 아래 둥근 획이 선에서 한동안 끊겨 보였다(안드로이드 시안 실측)
@@ -69,6 +73,9 @@ final class LaunchView: UIView {
     // 시간 (tick). 밀리초
     private var link: CADisplayLink?
     private var start: CFTimeInterval = -1
+    private var lastTick: CFTimeInterval = -1
+    /// 장면 시계(초 · 배율 전). 느림 안내(8초)는 실제 시간(elapsed)을 따른다
+    private var sceneClock: CFTimeInterval = 0
     private var waitStart: CFTimeInterval = -1
     private var exitStart: CFTimeInterval = -1
     private var exitAsked = false
@@ -136,9 +143,14 @@ final class LaunchView: UIView {
 
     @objc private func tick() {
         let now = CACurrentMediaTime()
-        if start < 0 { start = now }
+        if start < 0 {
+            start = now
+            lastTick = now
+        }
+        sceneClock += min(now - lastTick, Self.maxStep)
+        lastTick = now
         elapsed = (now - start) * 1000
-        intro = animate ? elapsed / timeScale : Self.introMs
+        intro = animate ? sceneClock * 1000 / timeScale : Self.introMs
         if exitAsked && exitStart < 0 && intro >= Self.introMs { exitStart = now }
         if exitStart < 0 {
             exitProgress = 0

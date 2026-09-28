@@ -21,9 +21,14 @@ final class WebViewController: UIViewController {
 
     private static let messageName = "QAtelierApp"
 
+    /// 화면이 바뀌고(commit) 첫 그림 소식이 이만큼 안 오면 켜는 장면을 그냥 걷는다(보조 스크립트가 안 도는 화면 등)
+    private static let paintWaitLimit: TimeInterval = 3
+
     private var webView: WKWebView!
     private var launchView: LaunchView?
     private var hideWork: DispatchWorkItem?
+    private var hideDeadline: DispatchTime?
+    private var userAgentChecked = false
     /// 사이트가 알린 화면 바탕색. 있으면 앱 바탕 · 상태 표시줄을 이 색에 맞춘다. 없으면 폰의 밤낮을 따른다
     private var pageBg: PageColor?
     /// 마지막으로 연 우리 화면. 끊김 화면의 「다시 시도」 · 웹 엔진이 멈췄을 때 이 주소를 다시 연다
@@ -50,10 +55,7 @@ final class WebViewController: UIViewController {
         buildWebView()
         applyColors()
         showLoading(animate: true)
-        prepareUserAgent { [weak self] in
-            guard let self else { return }
-            self.webView.load(URLRequest(url: self.lastURL))
-        }
+        webView.load(URLRequest(url: lastURL))
     }
 
     // MARK: 웹 화면
@@ -74,6 +76,8 @@ final class WebViewController: UIViewController {
         config.dataDetectorTypes = []
         // 사람이 누르지 않고 연 새 창(window.open)도 막지 않는다. 받아서 이 화면에서 연다(createWebViewWith)
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+        // 사이트가 앱 안인 줄 알게 브라우저 표시 끝에 QAtelierApp/판 을 붙인다(첫 화면에서 checkUserAgent 로 확인)
+        config.applicationNameForUserAgent = AppConfig.userAgentAppName(phone: UIDevice.current.userInterfaceIdiom == .phone)
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
@@ -115,27 +119,25 @@ final class WebViewController: UIViewController {
         return source.replacingOccurrences(of: "__BRIDGE_HOSTS__", with: "[\(hosts)]")
     }
 
-    /// 사이트가 앱 안인 줄 알게 브라우저 표시(User-Agent) 끝에 QAtelierApp/판 을 붙인다.
-    /// 기본 표시는 기기 · 화면 방식(아이패드는 데스크톱 방식)마다 달라, 웹 화면에 한 번 물어 그 뒤에 붙인다.
-    private func prepareUserAgent(then load: @escaping () -> Void) {
+    /// 브라우저 표시에 앱 표시가 붙었는지 첫 화면에서 한 번 본다. 빠졌으면 직접 붙여 다시 연다
+    /// (앱 이름을 붙이지 않는 화면 방식이 있을 때를 막는 것. 사이트가 앱인 줄 몰라 폰 모드가 안 켜진다)
+    private func checkUserAgent() {
+        guard !userAgentChecked else { return }
+        userAgentChecked = true
         webView.evaluateJavaScript("navigator.userAgent") { [weak self] result, error in
             guard let self else { return }
-            let token = AppConfig.userAgentToken
-            if let base = result as? String, !base.isEmpty {
-                self.webView.customUserAgent = base.contains(token) ? base : base + " " + token
-            } else {
-                appLog.error("기본 브라우저 표시를 읽지 못했습니다: \(String(describing: error), privacy: .public)")
-                self.webView.customUserAgent = Self.fallbackUserAgent()
+            guard let ua = result as? String else {
+                appLog.error("브라우저 표시를 읽지 못했습니다: \(String(describing: error), privacy: .public)")
+                return
             }
-            appLog.notice("브라우저 표시: \(self.webView.customUserAgent ?? "", privacy: .public)")
-            load()
+            appLog.notice("브라우저 표시: \(ua, privacy: .public)")
+            let token = AppConfig.userAgentToken
+            if !ua.contains(token) {
+                appLog.error("브라우저 표시에 앱 표시가 없어 붙여서 다시 엽니다")
+                self.webView.customUserAgent = ua + " " + token
+                self.webView.reload()
+            }
         }
-    }
-
-    private static func fallbackUserAgent() -> String {
-        let os = UIDevice.current.systemVersion.replacingOccurrences(of: ".", with: "_")
-        let device = UIDevice.current.userInterfaceIdiom == .pad ? "iPad; CPU OS \(os)" : "iPhone; CPU iPhone OS \(os)"
-        return "Mozilla/5.0 (\(device) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 \(AppConfig.userAgentToken)"
     }
 
     // MARK: 색 · 상태 표시줄
@@ -182,6 +184,9 @@ final class WebViewController: UIViewController {
     /// 웹 화면 위를 켜는 장면으로 덮는다. 바탕은 마지막 사이트 바탕색. 앱을 켤 때는 붓이 Q 를 긋는 장면을 돌리고,
     /// 웹 엔진이 멈춰 다시 열 때는 다 그려진 모습만 덮는다
     private func showLoading(animate: Bool) {
+        hideWork?.cancel()
+        hideWork = nil
+        hideDeadline = nil
         launchView?.removeFromSuperview()
         let cover = LaunchView(bg: currentBg, animate: animate)
         view.addSubview(cover)
@@ -199,6 +204,7 @@ final class WebViewController: UIViewController {
     private func hideLoading() {
         hideWork?.cancel()
         hideWork = nil
+        hideDeadline = nil
         guard let cover = launchView else { return }
         launchView = nil
         cover.finish { [weak cover] in
@@ -207,12 +213,18 @@ final class WebViewController: UIViewController {
         }
     }
 
-    /// 화면이 바뀐(commit) 직후는 아직 첫 그림 전일 수 있어 조금 기다렸다 걷는다. 다 불러오면(didFinish) 바로 걷는다
-    private func hideLoadingSoon() {
-        guard launchView != nil, hideWork == nil else { return }
+    /// 켜는 장면을 걷을 때를 잡는다. 신호가 여럿(첫 그림 · 다 불러옴 · 첫 그림 기다림 한도) 오면 가장 이른 때를 따른다.
+    /// 화면이 바뀌었다(commit)는 소식만으로 걷으면 첫 그림 전의 빈 바탕이 잠깐 보여, 보조 스크립트가 알리는
+    /// 첫 그림(painted)을 기다린다(안드로이드 onPageCommitVisible 과 같은 때)
+    private func hideLoading(after delay: TimeInterval) {
+        guard launchView != nil else { return }
+        let deadline = DispatchTime.now() + delay
+        if let current = hideDeadline, current <= deadline { return }
+        hideWork?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.hideLoading() }
         hideWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+        hideDeadline = deadline
+        DispatchQueue.main.asyncAfter(deadline: deadline, execute: work)
     }
 
     // MARK: 주소
@@ -448,11 +460,13 @@ extension WebViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         if let url = webView.url, AppConfig.isBridgeHost(url) { lastURL = url }
         appLog.notice("화면: \(Self.describe(webView.url), privacy: .public)")
-        hideLoadingSoon()
+        checkUserAgent()
+        hideLoading(after: Self.paintWaitLimit)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        hideLoading()
+        appLog.notice("다 불러옴: \(Self.describe(webView.url), privacy: .public)")
+        hideLoading(after: 0.1)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -587,6 +601,11 @@ extension WebViewController: WKScriptMessageHandler {
             printPage(title: m["title"] as? String ?? "")
         case "theme":
             onPageTheme(m["bg"] as? String ?? "")
+        case "painted":
+            // 첫 그림이 화면에 나갔다. 안쪽 틀(iframe)의 첫 그림은 켜는 장면과 상관없다
+            guard message.frameInfo.isMainFrame else { return }
+            appLog.notice("첫 그림")
+            hideLoading(after: 0.05)
         default:
             appLog.error("모르는 말: \(kind, privacy: .public)")
         }

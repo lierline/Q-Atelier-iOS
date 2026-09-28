@@ -56,6 +56,7 @@ jobs:
         run: curl -sS -o /dev/null -w '%{http_code} %{url_effective}\n' -L https://www.qatelier.co.kr/approve || true
 
       - name: 시뮬레이터 촬영
+        timeout-minutes: 25
         run: bash scripts/shoot.sh build/Build/Products/Debug-iphonesimulator/QAtelier.app out
 
       - name: 결과 올리기

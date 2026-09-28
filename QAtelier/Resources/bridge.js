@@ -12,6 +12,7 @@
 //    URL.revokeObjectURL 로 주소를 걷으므로, 만들 때 Blob 을 붙잡아 둔다.
 // 2) window.print() 를 iOS 인쇄로 잇는다. WKWebView 에서는 print() 가 아무 일도 하지 않는다.
 // 3) 화면 바탕색을 앱에 알린다. 앱은 그 색으로 상태 표시줄 · 홈 막대 자리를 칠하고 글자 밝기를 맞춘다.
+// 4) 첫 그림이 화면에 나간 때를 앱에 알린다. 앱은 이때 켜는 장면을 걷는다.
 (function () {
   var allowed = __BRIDGE_HOSTS__;
   if (location.protocol !== 'https:' || allowed.indexOf(location.hostname) < 0) return;
@@ -129,5 +130,17 @@
   if (window.matchMedia) {
     var scheme = window.matchMedia('(prefers-color-scheme: dark)');
     if (scheme.addEventListener) scheme.addEventListener('change', reportTheme);
+  }
+
+  // 문서가 선 뒤 두 번째 그리기 차례가 오면 첫 그림은 이미 화면에 나갔다. 화면이 바뀌었다는 소식(commit)만으로
+  // 걷으면 첫 그림 전의 빈 바탕이 잠깐 보인다. 안쪽 틀(iframe)은 알리지 않는다
+  if (window === window.top) {
+    var painted = function () {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { post({ kind: 'painted' }); });
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', painted);
+    else painted();
   }
 })();
