@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q-Atelier</title>
+<style>
+  /* 앱이 운영 서버에 닿지 못했을 때만 뜨는 화면. 앱 안에 들어 있어 망 없이도 뜬다 */
+  :root { color-scheme: light dark; --bg: #faf9f6; --fg: #1a1916; --sub: #6b665c; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0c0c0c; --fg: #f2eee6; --sub: #a39d90; } }
+  /* 앱이 마지막 사이트 바탕을 주소 끝 #dark · #light 로 넘기면 폰의 밤낮보다 그것을 따른다(WebViewController.showOffline) */
+  :root[data-theme="light"] { color-scheme: light; --bg: #faf9f6; --fg: #1a1916; --sub: #6b665c; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg: #0c0c0c; --fg: #f2eee6; --sub: #a39d90; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: system-ui, -apple-system, sans-serif; -webkit-text-size-adjust: 100%; }
+  main { min-height: 100%; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; text-align: center; }
+  h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--sub); }
+  a { margin-top: 12px; padding: 12px 20px; border-radius: 10px; background: var(--fg); color: var(--bg);
+    text-decoration: none; font-size: 15px; }
+</style>
+<script>
+  // 첫 그림 전에 정한다(머리의 보통 인라인 스크립트)
+  (function () {
+    var t = location.hash.slice(1);
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+<main>
+  <h1>서버에 닿지 못했습니다</h1>
+  <p>인터넷 연결을 확인한 뒤 다시 시도해 주십시오.</p>
+  <!-- 앱이 이 주소를 가로채 마지막으로 열던 화면을 다시 연다(WebViewController · AppConfig.retryScheme) -->
+  <a href="qatelier-app://retry">다시 시도</a>
+</main>
+</body>
+</html>

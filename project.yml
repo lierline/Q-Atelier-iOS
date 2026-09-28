@@ -1,0 +1,75 @@
+# Xcode 프로젝트는 커밋하지 않고 이 파일에서 만든다: xcodegen generate
+name: QAtelier
+options:
+  bundleIdPrefix: app.medqraft
+  deploymentTarget:
+    iOS: "15.0"
+  developmentLanguage: ko
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  QAtelier:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: QAtelier/Sources
+      - path: QAtelier/Resources
+        buildPhase: resources
+      - path: QAtelier/Assets.xcassets
+    info:
+      path: QAtelier/Info.plist
+      properties:
+        CFBundleDisplayName: Q-Atelier
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: ko
+        # 한국어만 있는 앱이라고 알린다. 앱 안의 시스템 글자(확인 창 · 파일 고르기 · 글자 선택 메뉴)가 한국어로 나온다
+        CFBundleLocalizations: [ko]
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # 켤 때 시스템이 먼저 그리는 화면. 앱 바탕색(밝음 #FAF9F6 · 어두움 #0C0C0C)만 칠하고 곧 켜는 장면이 덮는다
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIRequiredDeviceCapabilities: [arm64]
+        UIViewControllerBasedStatusBarAppearance: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # 받은 파일을 «파일» 앱의 «나의 iPhone › Q-Atelier» 에 보이게 한다(FileStore)
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # 사이트의 파일 칸에서 «사진 찍기» · «동영상 찍기» 를 고를 때 iOS 가 묻는 글. 없으면 그 자리에서 앱이 꺼진다
+        NSCameraUsageDescription: 파일 칸에서 사진을 찍어 바로 올릴 때 카메라를 씁니다.
+        NSMicrophoneUsageDescription: 파일 칸에서 동영상을 찍어 올릴 때 소리를 함께 담습니다.
+        NSPhotoLibraryUsageDescription: 파일 칸에 사진을 골라 올릴 때 사진 보관함을 씁니다.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.medqraft.qatelier
+        PRODUCT_NAME: QAtelier
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+schemes:
+  QAtelier:
+    build:
+      targets:
+        QAtelier: all
+    run:
+      config: Debug
+    archive:
+      config: Release

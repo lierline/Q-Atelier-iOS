@@ -1,0 +1,70 @@
+# 커밋마다 깃허브의 맥에서 시뮬레이터용으로 빌드하고, 아이폰 · 아이패드 시뮬레이터에 깔아 화면을 찍어 올린다.
+# 공개 저장소라 맥 실행 시간이 무료다. 서명 · 애플 개발자 계정 없이 돈다(시뮬레이터는 서명이 필요 없다).
+name: iOS 시뮬레이터 빌드
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 빌드 · 시뮬레이터 촬영
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 도구 판 확인
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes available
+
+      - name: XcodeGen 받기
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          XG=$(find "$RUNNER_TEMP/xcodegen" -type f -name xcodegen -perm -u+x | head -1)
+          test -n "$XG"
+          echo "XCODEGEN=$XG" >> "$GITHUB_ENV"
+          "$XG" --version
+
+      - name: Xcode 프로젝트 만들기
+        run: '"$XCODEGEN" generate'
+
+      - name: 빌드
+        run: |
+          set +e
+          xcodebuild -project QAtelier.xcodeproj -scheme QAtelier -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build > build.log 2>&1
+          code=$?
+          set -e
+          grep -E "(error|warning): " build.log | sort -u | head -80 || true
+          tail -3 build.log
+          exit $code
+
+      - name: 사이트에 닿는지
+        run: curl -sS -o /dev/null -w '%{http_code} %{url_effective}\n' -L https://www.qatelier.co.kr/approve || true
+
+      - name: 시뮬레이터 촬영
+        run: bash scripts/shoot.sh build/Build/Products/Debug-iphonesimulator/QAtelier.app out
+
+      - name: 결과 올리기
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-shots
+          path: |
+            out/
+            build.log
+          retention-days: 14
+          if-no-files-found: warn

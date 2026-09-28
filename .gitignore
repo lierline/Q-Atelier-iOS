@@ -1,0 +1,14 @@
+# xcodegen generate 가 만드는 것
+*.xcodeproj
+*.xcworkspace
+QAtelier/Info.plist
+
+# 빌드 · 촬영 결과
+build/
+DerivedData/
+out/
+*.xcresult
+
+xcuserdata/
+.DS_Store
+__pycache__/
