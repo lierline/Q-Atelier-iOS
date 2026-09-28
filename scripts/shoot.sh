@@ -8,7 +8,8 @@
 #      실제 속도로 녹화하면 녹화(영상 압축)가 맥을 붙잡아 장면이 통째로 건너뛰어졌다(2026-09-28 첫 실행).
 #   2) 밝은 · 어두운 모드에서 «처음 깐 앱» 을 켜고 정해 둔 때에 화면을 찍는다.
 #   3) 홈 화면(앱 아이콘)을 찍는다.
-# 앱 기록(subsystem app.medqraft.qatelier)과 앱이 기억한 값(사이트 바탕색)도 남긴다.
+# 앱 기록(subsystem app.medqraft.qatelier)도 남긴다. 앱이 기억한 사이트 바탕색은 기록의 «바탕색» 줄로 본다
+# (simctl spawn defaults read 는 앱 데이터 폴더 안의 설정 파일을 못 읽어 «Domain does not exist» 만 나왔다).
 #
 # 명령 하나가 멈춰도 나머지를 계속 찍도록 명령마다 제한 시간을 두고, 진행을 progress.txt 에 남긴다.
 # 전체 시간(SHOOT_BUDGET_S)이 모자라면 남은 촬영을 건너뛰고 앱 기록 · 끄기만 한다(작업 제한 시간에 통째로
@@ -179,7 +180,6 @@ shoot_device() {
     set_look "$udid" "$look" || continue
     fresh_install "$udid" || continue
     shoot_run "$udid" "$label-$look" "0.5 1.5 4 10"
-    limit 30 xcrun simctl spawn "$udid" defaults read "$BUNDLE" > "$OUT/$label-$look-defaults.txt" 2>&1
   done
 
   # 홈 화면: 앱을 닫으면 홈이 보인다(아이콘 확인)
