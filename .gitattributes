@@ -1,0 +1,4 @@
+# 저장소 안은 LF 로 둔다(맥에서 빌드 · 셸 스크립트)
+* text=auto eol=lf
+*.png binary
+*.ttf binary
