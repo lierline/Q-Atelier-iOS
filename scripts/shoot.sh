@@ -3,21 +3,23 @@
 #
 #   bash scripts/shoot.sh <앱 경로(.app)> <결과 폴더>
 #
-# 기기마다(아이폰 · 아이패드):
-#   1) 밝은 모드 · 어두운 모드에서 «처음 깐 앱» 을 켜고, 켠 뒤 정해 둔 때에 화면을 찍는다(실제 속도).
-#   2) 켜는 장면을 8배 느리게 돌려 영상으로 담는다(밝은 · 어두운 모드). 받은 쪽에서 8배 빠르게 돌리면 실제 장면이다.
+# 기기마다(아이폰 다음 아이패드. 한 대씩 켜고 끈다):
+#   1) 켜는 장면을 8배 느리게 돌려 영상으로 담는다(밝은 · 어두운 모드). 받은 쪽에서 8배 빠르게 돌리면 실제 장면이다.
 #      실제 속도로 녹화하면 녹화(영상 압축)가 맥을 붙잡아 장면이 통째로 건너뛰어졌다(2026-09-28 첫 실행).
+#   2) 밝은 · 어두운 모드에서 «처음 깐 앱» 을 켜고 정해 둔 때에 화면을 찍는다.
 #   3) 홈 화면(앱 아이콘)을 찍는다.
 # 앱 기록(subsystem app.medqraft.qatelier)과 앱이 기억한 값(사이트 바탕색)도 남긴다.
 #
-# 명령 하나가 멈춰도 나머지를 계속 찍도록 명령마다 제한 시간을 두고, 진행을 progress.txt 에 남긴다
-# (작업이 도중에 끊겨도 올라간 결과에서 어디까지 갔는지 보인다).
+# 명령 하나가 멈춰도 나머지를 계속 찍도록 명령마다 제한 시간을 두고, 진행을 progress.txt 에 남긴다.
+# 전체 시간(SHOOT_BUDGET_S)이 모자라면 남은 촬영을 건너뛰고 앱 기록 · 끄기만 한다(작업 제한 시간에 통째로
+# 끊기면 뒤 기기의 기록이 사라졌다. 2026-09-28 둘째 실행).
 set -uo pipefail
 
 APP="$1"
 OUT="$2"
 BUNDLE="app.medqraft.qatelier"
 SLOW=8
+DEADLINE=$(( $(date +%s) + ${SHOOT_BUDGET_S:-3300} ))
 mkdir -p "$OUT"
 test -d "$APP" || { echo "앱이 없습니다: $APP"; exit 1; }
 
@@ -37,25 +39,62 @@ limit() {
 now() { perl -MTime::HiRes=time -e 'printf "%.2f\n", time'; }
 sleep_until() { perl -MTime::HiRes=time,sleep -e 'my $d = $ARGV[0] - time; sleep($d) if $d > 0' "$1"; }
 load1() { sysctl -n vm.loadavg | awk '{print $2}'; }
+swap_used() { sysctl -n vm.swapusage | sed 's/.*used = \([^ ]*\).*/스왑 \1/'; }
+enough() { [ $(( DEADLINE - $(date +%s) )) -ge "$1" ]; }
 
-# 처음 부팅한 시뮬레이터는 몇 분 동안 뒤에서 일을 해 맥이 바쁘다(첫 실행에서 앱 켜기가 20~80초 걸림).
-# 1분 평균 부하가 코어 수 아래로 내려올 때까지(최대 limit_s 초) 기다린다
+# 처음 부팅한 시뮬레이터는 몇 분 동안 뒤에서 일을 해 맥이 바쁘다(둘을 함께 켠 둘째 실행에서 1분 부하 888 ·
+# 앱 켜기 90초 초과. 부하 46 에서는 앱 켜기 2.5초). 1분 부하가 기준 아래로 내려올 때까지(최대 limit_s 초) 기다린다.
+# 기다리는 동안 1분마다 부하를 남겨, 이 맥에서 부하가 어떻게 내려가는지 다음 실행에서 볼 수 있게 한다
 settle() {
-  local limit_s="$1" cores t0
-  cores=$(sysctl -n hw.ncpu)
+  local limit_s="$1" target t0 l last=0
+  target=$(( $(sysctl -n hw.ncpu) * 10 ))
   t0=$(date +%s)
   while :; do
-    if awk -v l="$(load1)" -v c="$cores" 'BEGIN { exit !(l < c) }'; then break; fi
-    [ $(( $(date +%s) - t0 )) -ge "$limit_s" ] && { note "부하가 안 내려감(코어 $cores · 부하 $(load1)) · 그대로 찍음"; return; }
+    l=$(load1)
+    if awk -v l="$l" -v c="$target" 'BEGIN { exit !(l < c) }'; then
+      note "맥이 한가해짐(부하 $l < $target · $(( $(date +%s) - t0 ))초 기다림 · $(swap_used))"
+      return
+    fi
+    if [ $(( $(date +%s) - t0 )) -ge "$limit_s" ] || ! enough 900; then
+      note "부하가 안 내려감(부하 $l · 기준 $target · $(swap_used)) · 그대로 찍음"
+      return
+    fi
+    if [ $(( $(date +%s) - last )) -ge 60 ]; then
+      note "기다리는 중 · 부하 $l"
+      last=$(date +%s)
+    fi
     sleep 10
   done
-  note "맥이 한가해짐(코어 $cores · 부하 $(load1) · $(( $(date +%s) - t0 ))초 기다림)"
 }
 
+# 화면 모드를 바꾸고 바뀌었는지 읽어 본다. 둘째 실행에서 바꾸기가 제한 시간에 끊겨 «밝은 모드» 녹화가
+# 어두운 모드로 찍혔다. 읽기 자체가 안 되면(빈 값 등) 바꿨다고 보고 찍되 기록을 남긴다
+set_look() {
+  local udid="$1" want="$2" got="" i
+  for i in 1 2 3; do
+    limit 60 xcrun simctl ui "$udid" appearance "$want" >/dev/null 2>&1
+    got=$(limit 30 xcrun simctl ui "$udid" appearance 2>/dev/null | tr -d '[:space:]')
+    case "$got" in
+      "$want") return 0 ;;
+      light | dark) sleep 5 ;;
+      *)
+        note "화면 모드를 읽지 못함(${got:-빈 값}) · $want 로 바뀌었다고 보고 찍음"
+        return 0
+        ;;
+    esac
+  done
+  note "화면 모드를 $want 로 못 바꿈(지금 $got) · 이 모드는 건너뜀"
+  return 1
+}
+
+# 앱을 지우고 새로 깐다. 지우기가 안 되면 앞 실행의 기억(사이트 바탕색)이 남아 켜는 장면의 색이 달라진다
 fresh_install() {
   local udid="$1"
-  limit 60 xcrun simctl uninstall "$udid" "$BUNDLE" >/dev/null 2>&1
-  limit 120 xcrun simctl install "$udid" "$APP" || { note "설치 실패"; return 1; }
+  limit 90 xcrun simctl uninstall "$udid" "$BUNDLE" >/dev/null 2>&1
+  if limit 30 xcrun simctl get_app_container "$udid" "$BUNDLE" data >/dev/null 2>&1; then
+    note "앱이 안 지워짐 · 앞 실행의 기억이 남은 채 켜짐"
+  fi
+  limit 180 xcrun simctl install "$udid" "$APP" || { note "설치 실패"; return 1; }
 }
 
 launch() {
@@ -111,26 +150,36 @@ record_slow() {
   note "$name 녹화 끝($(du -h "$OUT/$name.mp4" 2>/dev/null | cut -f1))"
 }
 
+# 기기 하나를 만들어 켜고, 찍고, 끈다. 둘을 함께 켜면 첫 부팅의 뒷일이 겹쳐 맥이 멈추다시피 했다(둘째 실행)
 shoot_device() {
-  local label="$1" udid="$2" look
+  local label="$1" type="$2" udid look
+  udid=$(xcrun simctl create "qa-$label" "$type") || { note "[$label] 기기를 못 만듦: $type"; return 1; }
+  note "[$label] $type · $udid"
+  limit 120 xcrun simctl boot "$udid" >/dev/null 2>&1
+  limit 900 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || note "[$label] 부팅을 끝까지 못 기다림"
+  note "[$label] 부팅 끝 · 부하 $(load1)"
+  settle 600
+
   limit 30 xcrun simctl status_bar "$udid" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 >/dev/null 2>&1
 
   # 길들이기: 한 번 켜 두면 웹 엔진 · 망 준비가 데워진다. 찍지 않는다
-  limit 30 xcrun simctl ui "$udid" appearance light
+  set_look "$udid" light
   fresh_install "$udid" && launch "$udid" && sleep 20
   note "[$label] 길들이기 끝"
 
   for look in light dark; do
-    limit 30 xcrun simctl ui "$udid" appearance "$look"
-    fresh_install "$udid" || continue
-    shoot_run "$udid" "$label-$look" "0.3 0.7 1.1 1.6 3 6 12"
-    limit 30 xcrun simctl spawn "$udid" defaults read "$BUNDLE" > "$OUT/$label-$look-defaults.txt" 2>&1
+    enough 300 || { note "[$label] 시간이 모자라 $look 녹화를 건너뜀"; continue; }
+    set_look "$udid" "$look" || continue
+    record_slow "$udid" "$label-$look-launch-x$SLOW"
   done
 
   for look in light dark; do
-    limit 30 xcrun simctl ui "$udid" appearance "$look"
-    record_slow "$udid" "$label-$look-launch-x$SLOW"
+    enough 240 || { note "[$label] 시간이 모자라 $look 촬영을 건너뜀"; continue; }
+    set_look "$udid" "$look" || continue
+    fresh_install "$udid" || continue
+    shoot_run "$udid" "$label-$look" "0.5 1.5 4 10"
+    limit 30 xcrun simctl spawn "$udid" defaults read "$BUNDLE" > "$OUT/$label-$look-defaults.txt" 2>&1
   done
 
   # 홈 화면: 앱을 닫으면 홈이 보인다(아이콘 확인)
@@ -142,6 +191,7 @@ shoot_device() {
     --predicate 'subsystem == "app.medqraft.qatelier"' > "$OUT/$label-log.txt" 2>&1
   note "[$label] 앱 기록 받음"
   limit 60 xcrun simctl shutdown "$udid" >/dev/null 2>&1
+  note "[$label] 끔 · 부하 $(load1)"
 }
 
 # 제한 시간 도우미가 이 맥에서 정말 끊는지 먼저 한 번 본다(142 면 끊은 것)
@@ -152,20 +202,13 @@ note "제한 시간 도우미 자체 확인: 코드 $? (142 면 정상)"
 cp "$APP"/AppIcon*.png "$OUT/" 2>/dev/null || note "앱 안에 AppIcon 그림이 없음"
 plutil -p "$APP/Info.plist" > "$OUT/Info.plist.txt" 2>&1
 
-# 두 기기를 함께 부팅해 둔다(처음 부팅이 몇 분씩 걸려 차례로 하면 두 배가 된다).
-# 둘 다 부팅을 마치고 맥이 한가해진 뒤 한 기기씩 찍어, 켜는 장면을 재는 동안 다른 일이 끼지 않게 한다
-note "기기 만들기 · 코어 $(sysctl -n hw.ncpu) · 메모리 $(( $(sysctl -n hw.memsize) / 1073741824 ))GB"
-PHONE=$(xcrun simctl create "qa-phone" "iPhone 17") || { note "아이폰 기기를 못 만듦"; exit 1; }
-PAD=$(xcrun simctl create "qa-pad" "iPad Air 11-inch (M4)") || { note "아이패드 기기를 못 만듦"; exit 1; }
-note "phone=$PHONE pad=$PAD"
-for u in "$PHONE" "$PAD"; do limit 60 xcrun simctl boot "$u" >/dev/null 2>&1; done
-for u in "$PHONE" "$PAD"; do limit 900 xcrun simctl bootstatus "$u" -b >/dev/null 2>&1 || note "부팅을 끝까지 못 기다림: $u"; done
-note "두 기기 부팅 끝 · 부하 $(load1)"
-settle 300
-
-shoot_device phone "$PHONE"
-settle 120
-shoot_device pad "$PAD"
+note "코어 $(sysctl -n hw.ncpu) · 메모리 $(( $(sysctl -n hw.memsize) / 1073741824 ))GB · 부하 $(load1) · 시간 $(( (DEADLINE - $(date +%s)) / 60 ))분"
+shoot_device phone "iPhone 17"
+if enough 600; then
+  shoot_device pad "iPad Air 11-inch (M4)"
+else
+  note "[pad] 시간이 모자라 건너뜀"
+fi
 
 # 앱이 꺼졌다면 맥의 진단 기록에 남는다
 mkdir -p "$OUT/crashes"

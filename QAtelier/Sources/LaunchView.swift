@@ -74,7 +74,8 @@ final class LaunchView: UIView {
     private var link: CADisplayLink?
     private var start: CFTimeInterval = -1
     private var lastTick: CFTimeInterval = -1
-    /// 장면 시계(초 · 배율 전). 느림 안내(8초)는 실제 시간(elapsed)을 따른다
+    /// 장면 시계(초 · 배율 전). 느림 안내(8초)는 장면 시계가 아니라 실제 시간(elapsed)을 따른다.
+    /// 촬영 배율만은 나눈다. 안 나누면 8배 느린 촬영에서 장면이 끝나기 전에 느림 안내가 떠 영상이 실제와 달라진다
     private var sceneClock: CFTimeInterval = 0
     private var waitStart: CFTimeInterval = -1
     private var exitStart: CFTimeInterval = -1
@@ -149,7 +150,7 @@ final class LaunchView: UIView {
         }
         sceneClock += min(now - lastTick, Self.maxStep)
         lastTick = now
-        elapsed = (now - start) * 1000
+        elapsed = (now - start) * 1000 / timeScale
         intro = animate ? sceneClock * 1000 / timeScale : Self.introMs
         if exitAsked && exitStart < 0 && intro >= Self.introMs { exitStart = now }
         if exitStart < 0 {

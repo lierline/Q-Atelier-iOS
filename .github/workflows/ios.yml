@@ -19,7 +19,7 @@ jobs:
   build:
     name: 빌드 · 시뮬레이터 촬영
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v7
 
@@ -55,8 +55,12 @@ jobs:
       - name: 사이트에 닿는지
         run: curl -sS -o /dev/null -w '%{http_code} %{url_effective}\n' -L https://www.qatelier.co.kr/approve || true
 
+      # 기기를 한 대씩 켜고 맥이 한가해지기를 기다려 오래 걸린다(무료 맥이라 시간 값은 없다).
+      # 스크립트는 SHOOT_BUDGET_S 가 다 되면 남은 촬영을 건너뛰고 앱 기록만 받는다. 단계 제한은 그보다 넉넉히
       - name: 시뮬레이터 촬영
-        timeout-minutes: 25
+        timeout-minutes: 60
+        env:
+          SHOOT_BUDGET_S: 3100
         run: bash scripts/shoot.sh build/Build/Products/Debug-iphonesimulator/QAtelier.app out
 
       - name: 결과 올리기
