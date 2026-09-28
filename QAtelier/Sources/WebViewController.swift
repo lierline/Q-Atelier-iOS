@@ -23,6 +23,10 @@ final class WebViewController: UIViewController {
 
     /// 화면이 바뀌고(commit) 첫 그림 소식이 이만큼 안 오면 켜는 장면을 그냥 걷는다(보조 스크립트가 안 도는 화면 등)
     private static let paintWaitLimit: TimeInterval = 3
+    /// 다 불러온 뒤(didFinish)에도 첫 그림 소식을 이만큼 더 기다린다. 0.1초였을 때 아이패드 시뮬레이터에서 첫 그림보다
+    /// 0.16~0.28초 먼저 걷히기 시작했다(2026-09-28 셋째 촬영 · 첫 그림은 다 불러옴 뒤 0.28~0.41초에 왔다).
+    /// 보조 스크립트가 안 도는 화면(앱 안의 끊김 화면)은 이 한도에 걷힌다
+    private static let paintAfterFinishLimit: TimeInterval = 0.5
 
     private var webView: WKWebView!
     private var launchView: LaunchView?
@@ -216,12 +220,15 @@ final class WebViewController: UIViewController {
     /// 켜는 장면을 걷을 때를 잡는다. 신호가 여럿(첫 그림 · 다 불러옴 · 첫 그림 기다림 한도) 오면 가장 이른 때를 따른다.
     /// 화면이 바뀌었다(commit)는 소식만으로 걷으면 첫 그림 전의 빈 바탕이 잠깐 보여, 보조 스크립트가 알리는
     /// 첫 그림(painted)을 기다린다(안드로이드 onPageCommitVisible 과 같은 때)
-    private func hideLoading(after delay: TimeInterval) {
+    private func hideLoading(after delay: TimeInterval, reason: String) {
         guard launchView != nil else { return }
         let deadline = DispatchTime.now() + delay
         if let current = hideDeadline, current <= deadline { return }
         hideWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.hideLoading() }
+        let work = DispatchWorkItem { [weak self] in
+            appLog.notice("걷기 요청: \(reason, privacy: .public)")
+            self?.hideLoading()
+        }
         hideWork = work
         hideDeadline = deadline
         DispatchQueue.main.asyncAfter(deadline: deadline, execute: work)
@@ -461,12 +468,12 @@ extension WebViewController: WKNavigationDelegate {
         if let url = webView.url, AppConfig.isBridgeHost(url) { lastURL = url }
         appLog.notice("화면: \(Self.describe(webView.url), privacy: .public)")
         checkUserAgent()
-        hideLoading(after: Self.paintWaitLimit)
+        hideLoading(after: Self.paintWaitLimit, reason: "화면이 바뀐 뒤 첫 그림 소식이 없음")
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         appLog.notice("다 불러옴: \(Self.describe(webView.url), privacy: .public)")
-        hideLoading(after: 0.1)
+        hideLoading(after: Self.paintAfterFinishLimit, reason: "다 불러온 뒤 첫 그림 소식이 없음")
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -605,7 +612,7 @@ extension WebViewController: WKScriptMessageHandler {
             // 첫 그림이 화면에 나갔다. 안쪽 틀(iframe)의 첫 그림은 켜는 장면과 상관없다
             guard message.frameInfo.isMainFrame else { return }
             appLog.notice("첫 그림")
-            hideLoading(after: 0.05)
+            hideLoading(after: 0.05, reason: "첫 그림")
         default:
             appLog.error("모르는 말: \(kind, privacy: .public)")
         }
