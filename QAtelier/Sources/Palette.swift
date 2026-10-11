@@ -2,8 +2,8 @@ import UIKit
 
 /// 안드로이드 앱 res/values/colors.xml 과 같은 색
 enum Palette {
-    static let appBgLight = PageColor(rgb: 0xFAF9F6)
-    static let appBgDark = PageColor(rgb: 0x0C0C0C)
+    static let appBgLight = PageColor(rgb: QDesignPalette.backgroundLight)
+    static let appBgDark = PageColor(rgb: QDesignPalette.backgroundDark)
     static let accent = UIColor(rgb: 0xB8935A)
     static let accentBright = UIColor(rgb: 0xD9B779)
     static let mutedOnDark = UIColor(rgb: 0xA39D90)
