@@ -669,6 +669,49 @@ html .qd-control-icon.qd-btn--secondary > svg { width: var(--qd-secondary-icon-g
 /* Delete/remove actions retain their semantic hover color at the shared size. */
 html .qd-control-icon--danger:hover:not(:disabled) { color: var(--qd-danger); }
 
+/* Custom file triggers use the same target and type rules as other controls.
+   The hidden native input keeps its original accept, validation and change behavior. */
+html label:has(> input[type='file'].sr-only) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--qd-control-height);
+  padding: var(--qd-control-pad-y) var(--qd-control-pad-x);
+  border-radius: var(--qd-radius-control) !important;
+  font-family: var(--qd-font-family-ui);
+  font-size: var(--qd-control-size);
+}
+html label:has(> input[type='file'].sr-only:focus-visible) {
+  outline: var(--qd-focus-outline-width) solid var(--qd-accent);
+  outline-offset: var(--qd-border-width-2);
+}
+
+/* A calendar attached to a narrow field must not enlarge the enclosing main.
+   Keep its DOM ancestry, date behavior and dismissal listeners intact. */
+@media (max-width: 640px) {
+  html .qd-popover:has(.qd-calendar-day) {
+    position: fixed !important;
+    inset: auto var(--qd-space-3) !important;
+    top: 50% !important;
+    transform: translateY(-50%);
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - var(--qd-space-3) * 2);
+    margin: 0 !important;
+    overflow: auto;
+  }
+  html .qd-popover:has(.qd-calendar-day) > .select-none > div:last-child > div:only-child {
+    flex: 1 1 0%;
+  }
+  html .qd-popover:has(.qd-calendar-day) > .select-none > div:last-child > div:only-child .qd-calendar-day {
+    width: 100%;
+    min-width: 0;
+    height: var(--qd-control-height);
+  }
+  html .qd-popover:has(.qd-calendar-day) > .select-none > div:first-child {
+    flex-wrap: wrap;
+  }
+}
+
 /* Korean copy wraps between words. Unbroken identifiers can wrap only when
    they exceed the available width. Scoped tables and print recipes may opt out. */
 :root {
