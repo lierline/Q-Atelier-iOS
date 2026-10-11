@@ -46,6 +46,7 @@
   --qd-table-pad-x: 12px;
   --qd-table-scroll-max-height: 70vh;
   --qd-table-header-layer: 2;
+  --qd-table-description-min-width: 160px;
   --qd-kpi-size: 36px;
   --qd-kpi-min-size: 20px;
   --qd-kpi-fluid-size: 16cqw;
@@ -83,6 +84,7 @@
 .qd-table-scroll--tall { max-height: var(--qd-table-scroll-max-height); overflow: auto; }
 .qd-table-scroll-header { position: sticky; top: 0; z-index: var(--qd-table-header-layer); background: var(--qd-surface); }
 .qd-table-sticky-first { position: sticky; left: 0; z-index: calc(var(--qd-table-header-layer) - 1); background: var(--qd-surface); }
+.qd-table-description { min-width: var(--qd-table-description-min-width); }
 .qd-table-group-label { display: inline-block; position: sticky; left: var(--qd-space-3); }
 @media print {
   .qd-table-scroll-header { position: static; }
