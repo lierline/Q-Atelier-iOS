@@ -28,12 +28,12 @@ final class ToastView: UIView {
 
     private init(text: String) {
         super.init(frame: .zero)
-        backgroundColor = UIColor(rgb: 0x1A1916).withAlphaComponent(0.94)
+        backgroundColor = UIColor(rgb: QDesignPalette.toastSurface).withAlphaComponent(QDesignNativeAppearance.toastOpacity)
         layer.cornerRadius = QDesignGeometry.cornerRadius
         layer.cornerCurve = .continuous
         isUserInteractionEnabled = false
         label.text = text
-        label.textColor = UIColor(rgb: 0xF2EEE6)
+        label.textColor = UIColor(rgb: QDesignPalette.toastText)
         label.font = .preferredFont(forTextStyle: .subheadline)
         label.adjustsFontForContentSizeCategory = true
         label.numberOfLines = 0

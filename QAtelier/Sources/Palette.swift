@@ -4,10 +4,10 @@ import UIKit
 enum Palette {
     static let appBgLight = PageColor(rgb: QDesignPalette.backgroundLight)
     static let appBgDark = PageColor(rgb: QDesignPalette.backgroundDark)
-    static let accent = UIColor(rgb: 0xB8935A)
-    static let accentBright = UIColor(rgb: 0xD9B779)
-    static let mutedOnDark = UIColor(rgb: 0xA39D90)
-    static let mutedOnLight = UIColor(rgb: 0x6B665C)
+    static let accent = UIColor(rgb: QDesignPalette.loadingAccent)
+    static let accentBright = UIColor(rgb: QDesignPalette.loadingAccentBright)
+    static let mutedOnDark = UIColor(rgb: QDesignPalette.mutedOnDark)
+    static let mutedOnLight = UIColor(rgb: QDesignPalette.mutedOnLight)
 }
 
 extension UIColor {

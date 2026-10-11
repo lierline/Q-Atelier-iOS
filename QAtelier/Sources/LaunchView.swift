@@ -414,9 +414,9 @@ final class LaunchView: UIView {
     /// 빛 띠. 투명 쪽도 같은 색(알파만 0)이라 가장자리에 회색 테가 지지 않는다
     private static let glintGradient: CGGradient = {
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        let r: CGFloat = 1
-        let g: CGFloat = 0xF8 / 255.0
-        let b: CGFloat = 0xEC / 255.0
+        let r: CGFloat = CGFloat((QDesignPalette.launchGlint >> 16) & 0xFF) / 255.0
+        let g: CGFloat = CGFloat((QDesignPalette.launchGlint >> 8) & 0xFF) / 255.0
+        let b: CGFloat = CGFloat(QDesignPalette.launchGlint & 0xFF) / 255.0
         let clear = CGColor(red: r, green: g, blue: b, alpha: 0)
         let glint = CGColor(red: r, green: g, blue: b, alpha: 1)
         return CGGradient(colorsSpace: space, colors: [clear, glint, clear] as CFArray, locations: [0.3, 0.5, 0.7])!
