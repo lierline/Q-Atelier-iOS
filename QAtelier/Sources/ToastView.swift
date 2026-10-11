@@ -29,7 +29,7 @@ final class ToastView: UIView {
     private init(text: String) {
         super.init(frame: .zero)
         backgroundColor = UIColor(rgb: 0x1A1916).withAlphaComponent(0.94)
-        layer.cornerRadius = 10
+        layer.cornerRadius = QDesignGeometry.cornerRadius
         layer.cornerCurve = .continuous
         isUserInteractionEnabled = false
         label.text = text

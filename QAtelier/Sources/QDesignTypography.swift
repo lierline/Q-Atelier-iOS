@@ -6,3 +6,7 @@ enum QDesignTypography {
     static let wordmarkPointSize: CGFloat = 11
     static let textInset: CGFloat = 24
 }
+
+enum QDesignGeometry {
+    static let cornerRadius: CGFloat = 10
+}
