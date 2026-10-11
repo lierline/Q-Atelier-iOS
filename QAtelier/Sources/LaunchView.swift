@@ -56,7 +56,9 @@ final class LaunchView: UIView {
     private let muted: UIColor
     private let accentBright: UIColor
     private let wordFont: UIFont
-    private let hintFont = UIFont.systemFont(ofSize: 13)
+    private var hintFont: UIFont {
+        UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: QDesignTypography.hintPointSize), compatibleWith: traitCollection)
+    }
     /// «Q-ATELIER» 글자 모양이 차지하는 칸(기준선 기준 · 위가 +)
     private let wordGlyphs: CGRect
     private let canvas = LaunchCanvas()
@@ -67,6 +69,7 @@ final class LaunchView: UIView {
     private var wordBaseline: CGFloat = 0
     private var lineY: CGFloat = 0
     private var hintBaseline: CGFloat = 0
+    private var hintRect = CGRect.zero
     private var bowlArea: CGPath = CGMutablePath()
     private var tailArea: CGPath = CGMutablePath()
 
@@ -101,7 +104,7 @@ final class LaunchView: UIView {
         mark = UIImage(named: dark ? "launch-q-on-dark" : "launch-q-on-light")
         muted = dark ? Palette.mutedOnDark : Palette.mutedOnLight
         accentBright = dark ? Palette.accentBright : Palette.accent
-        let font = Self.wordmarkFont(size: 11)
+        let font = Self.wordmarkFont(size: QDesignTypography.wordmarkPointSize)
         wordFont = font
         let measured = NSAttributedString(string: Self.wordmark, attributes: [.font: font])
         let line = CTLineCreateWithAttributedString(measured as CFAttributedString)
@@ -184,6 +187,15 @@ final class LaunchView: UIView {
         wordBaseline = markRect.maxY + gap + wordGlyphs.maxY
         lineY = wordBaseline + 22
         hintBaseline = lineY + 18 + hintFont.pointSize
+        let hintWidth = max(1, bounds.width - 2 * QDesignTypography.textInset)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byWordWrapping
+        let hintSize = (Self.slowHint as NSString).boundingRect(
+            with: CGSize(width: hintWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: hintFont, .paragraphStyle: paragraph], context: nil).size
+        hintRect = CGRect(x: centerX - hintWidth / 2, y: hintBaseline - hintFont.ascender, width: hintWidth, height: ceil(hintSize.height))
 
         let yl = markRect.minY + h * Self.splitLeft
         let yr = markRect.minY + h * Self.splitRight
@@ -206,7 +218,7 @@ final class LaunchView: UIView {
 
         // 그리는 판은 붓 Q 부터 느림 안내 아래까지만(화면 전체를 매 장 다시 그리지 않게). 바탕은 이 판 밖에서 칠한다
         let top = markRect.minY - 16
-        canvas.frame = CGRect(x: 0, y: top, width: bounds.width, height: hintBaseline + 12 - top)
+        canvas.frame = CGRect(x: 0, y: top, width: bounds.width, height: hintRect.maxY + 12 - top)
         canvas.setNeedsDisplay()
     }
 
@@ -360,7 +372,14 @@ final class LaunchView: UIView {
     private func drawHint(_ ctx: CGContext, since: Double, alpha: CGFloat) {
         let f = CGFloat(Self.clamp(since / Self.waitFadeMs)) * alpha
         guard f > 0 else { return }
-        drawCentered(ctx, Self.slowHint, font: hintFont, color: muted.withAlphaComponent(f), kern: 0, baseline: hintBaseline)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byWordWrapping
+        UIGraphicsPushContext(ctx)
+        (Self.slowHint as NSString).draw(
+            with: hintRect, options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: hintFont, .foregroundColor: muted.withAlphaComponent(f), .paragraphStyle: paragraph], context: nil)
+        UIGraphicsPopContext()
     }
 
     /// 가운데 맞춤 한 줄. 자간은 글자 사이에만 둔다(마지막 글자 뒤에 두면 가운데가 한쪽으로 쏠린다)
