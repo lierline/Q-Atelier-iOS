@@ -392,6 +392,39 @@ html input[type='file']:not(.sr-only):focus-visible {
   outline-offset: var(--qd-border-width-2);
 }
 
+/* Browser-populated text fields share the same palette as ordinary fields.
+   The inset paint covers the browser's private autofill background; it does
+   not disable autofill, alter values or add a delayed background animation. */
+:root {
+  --qd-autofill-surface: var(--qd-surface);
+  --qd-autofill-ink: var(--qd-text);
+  --qd-autofill-cover: 100vmax;
+}
+html :is(input, textarea):is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: var(--qd-autofill-ink) !important;
+  caret-color: var(--qd-accent);
+  box-shadow: inset 0 0 0 var(--qd-autofill-cover) var(--qd-autofill-surface) !important;
+}
+html :is(input, textarea):is(:autofill, :-webkit-autofill):focus-visible {
+  outline: var(--qd-focus-outline-width) solid var(--qd-accent) !important;
+  outline-offset: var(--qd-space-1) !important;
+}
+html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
+  --qd-autofill-surface: var(--qd-bg);
+  --qd-autofill-ink: var(--qd-muted);
+}
+@media (forced-colors: active) {
+  html :is(input, textarea):is(:autofill, :-webkit-autofill) {
+    -webkit-text-fill-color: FieldText !important;
+    caret-color: FieldText;
+    box-shadow: none !important;
+    outline-color: Highlight !important;
+  }
+  html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
+    -webkit-text-fill-color: GrayText !important;
+  }
+}
+
 /* Q family foundations. This file owns shared screen parameters.
    Product recipes own selectors and functional variants. Print and machine
    readable geometry remain explicitly scoped in the product recipes. */
