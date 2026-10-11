@@ -362,6 +362,36 @@ select.qd-input { appearance: auto !important; background-image: none !important
   .qd-dialog-backdrop, .qd-drawer-backdrop, .qd-toast, .qd-mobile-header { display: none; }
 }
 
+/* Visible native file controls share the same outer target as custom triggers.
+   Keep native selection, accept/multiple, validation and keyboard behavior. */
+html input[type='file']:not(.sr-only) {
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: var(--qd-control-height) !important;
+  max-width: 100%;
+  padding: 0 !important;
+  border-radius: var(--qd-radius-control) !important;
+  font-family: var(--qd-font-family-ui) !important;
+  font-size: var(--qd-control-size) !important;
+  color: var(--qd-text);
+}
+html input[type='file']:not(.sr-only)::file-selector-button {
+  min-height: calc(var(--qd-control-height) - var(--qd-border-width) * 2);
+  margin: 0 var(--qd-space-3) 0 0;
+  padding: var(--qd-space-2) var(--qd-control-pad-x);
+  border: 0;
+  border-inline-end: var(--qd-border-width) solid var(--qd-ctl);
+  border-radius: var(--qd-radius-control);
+  background: var(--qd-surface);
+  color: var(--qd-text);
+  font: inherit;
+  cursor: inherit;
+}
+html input[type='file']:not(.sr-only):focus-visible {
+  outline: var(--qd-focus-outline-width) solid var(--qd-accent);
+  outline-offset: var(--qd-border-width-2);
+}
+
 /* Q family foundations. This file owns shared screen parameters.
    Product recipes own selectors and functional variants. Print and machine
    readable geometry remain explicitly scoped in the product recipes. */
