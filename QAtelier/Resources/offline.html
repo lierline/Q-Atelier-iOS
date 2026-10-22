@@ -729,6 +729,18 @@ html .qd-skeleton, html .qa-skeleton { animation-duration: var(--qd-skeleton-dur
 @media (max-width: 640px) {
   html :is(.qd-btn, .qa-btn, .qa-btn-secondary, .qd-input, .qa-input, .qd-choice, .qd-tab, .qd-text-action, .qd-combobox-option, .qd-filter-input, .qd-filter-select, .qd-filter-submit, .qd-filter-clear, .qd-pager-btn, .qa-touch-44) { min-height: var(--qd-control-height) !important; }
   html :is(.qd-control-icon, .qd-dialog-close, .qd-mobile-menu, .qa-touch-44sq) { min-width: var(--qd-control-height) !important; min-height: var(--qd-control-height) !important; }
+  /* 두 글자 탭(「전체」 · 「지원」)은 좁은 여백(px-2.5)에서 42 였다(2026-10-22 폰 실측). 폭도 44 를 채우고 글은 가운데 */
+  html .qd-tab { min-width: var(--qd-control-height) !important; justify-content: center; text-align: center; }
+}
+/* 누르는 자리만 넓힌다(2026-10-22 세 제품 폰 실측 · 터치 화면). 그린 모양 · 자리는 그대로 두고 보이지 않는 ::after 가
+   가로 · 세로 중 모자란 쪽만 가운데로 넓혀 44 를 채운다. 44 이상인 쪽은 넓히지 않아 긴 줄이 옆 칸을 덮지 않는다.
+   Q-Atelier 의 qa-touch-hit 과 같은 계산이다. 쓰지 않는 자리: 줄 간격이 44 보다 좁은 목록 · 표 · 나무(넓힌 자리가
+   옆 줄의 글자를 덮어 다른 것이 눌린다), overflow 로 자르는 요소(line-clamp · truncate 는 ::after 도 자른다),
+   input 같은 대체 요소(::after 가 그려지지 않는다), absolute · fixed · sticky 인 요소(이 규칙은 층 밖이라
+   Tailwind 4 의 층 안 유틸리티를 이겨 relative 로 바꾼다. 그런 요소는 ::after 만 따로 단다). */
+@media (hover: none) and (pointer: coarse) {
+  :where(.qd-touch-hit) { position: relative; }
+  html .qd-touch-hit::after { content: ''; position: absolute; inset: min(0px, calc((100% - var(--qd-control-height)) / 2)); }
 }
 /* Contiguous selection rows inherit the enclosing panel's shape. */
 :root { --qd-selection-row-height: var(--qd-control-height); --qd-selection-row-padding-y: var(--qd-space-2); --qd-selection-row-padding-x: var(--qd-space-3); }
