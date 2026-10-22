@@ -307,8 +307,8 @@ select.qd-input { appearance: auto !important; background-image: none !important
 .qd-choice-hit:has(> .qd-radio:disabled) { cursor: not-allowed; }
 .qd-choice { min-height: var(--qd-control-height-sm); border: 1px solid var(--qd-ctl); border-radius: var(--qd-radius); background: var(--qd-surface); color: var(--qd-text); font-size: var(--qd-control-size); padding: var(--qd-space-2) var(--qd-space-3); }
 .qd-choice[aria-pressed='true'], .qd-choice[data-state='checked'], .qd-choice--selected { color: var(--qd-text); background: var(--qd-surface2); border-color: var(--qd-accent); font-weight: 600; }
-.qd-checkbox { width: 16px; height: 16px; border: 1px solid var(--qd-ctl); accent-color: var(--qd-accent); }
-.qd-checkbox-mark { width: 16px; height: 16px; border: 1px solid var(--qd-ctl); border-radius: 4px; background: var(--qd-surface); color: var(--qd-text); }
+.qd-checkbox { width: var(--qd-choice-glyph-size); height: var(--qd-choice-glyph-size); border: 1px solid var(--qd-ctl); accent-color: var(--qd-accent); }
+.qd-checkbox-mark { width: var(--qd-choice-glyph-size); height: var(--qd-choice-glyph-size); border: 1px solid var(--qd-ctl); border-radius: 4px; background: var(--qd-surface); color: var(--qd-text); }
 .qd-checkbox:checked + .qd-checkbox-mark, .qd-checkbox-mark[data-state='checked'] { background: var(--qd-accent); border-color: var(--qd-accent); color: var(--qd-bg); }
 .qd-checkbox:indeterminate + .qd-checkbox-mark { background: var(--qd-accent); border-color: var(--qd-accent); color: var(--qd-bg); }
 .qd-checkbox:not(:checked):not(:indeterminate) + .qd-checkbox-mark .qd-checkbox-icon { visibility: hidden; }
@@ -317,7 +317,7 @@ select.qd-input { appearance: auto !important; background-image: none !important
 .qd-checkbox:focus-visible + .qd-checkbox-mark { outline: 2px solid var(--qd-accent); outline-offset: 2px; }
 .qd-checkbox:disabled + .qd-checkbox-mark { background: var(--qd-bg); color: var(--qd-muted); }
 .qd-choice-hit > .qd-checkbox:disabled { cursor: not-allowed; }
-.qd-checkbox-icon { width: 12px; height: 12px; }
+.qd-checkbox-icon { width: calc(var(--qd-choice-glyph-size) * .75); height: calc(var(--qd-choice-glyph-size) * .75); }
 .qd-calendar-day {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: var(--qd-control-height); min-height: var(--qd-control-height);
@@ -431,6 +431,16 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
 @layer q-design-reset;
 
 :root {
+  --qd-grid-min-width: 180px;
+  --qd-editable-table-min-width: 40rem;
+  --qd-header-action-inset: var(--qd-space-3);
+  --qd-header-action-gap: var(--qd-space-2);
+  --qd-header-action-leading-right: calc(var(--qd-header-action-inset) + var(--qd-control-height) + var(--qd-header-action-gap));
+  --qd-control-leading: 1.4;
+  --qd-grid-gap: var(--qd-space-3);
+  --qd-kpi-min-width: 160px;
+  --qd-overlay-screen-inset: var(--qd-space-4);
+  --qd-textarea-max-height: min(60dvh, 32rem);
   --qd-backdrop-filter: none;
   --qd-surface-filter: none;
   --qd-root-size: 16px;
@@ -785,9 +795,16 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
   --qd-native-text-inset: 24px;
 }
 @media screen {
+  :where(main, [role="main"]) > * { min-inline-size: 0; }
   body { word-break: var(--qd-copy-word-break); overflow-wrap: var(--qd-copy-overflow-wrap); }
 }
 .qd-copy { word-break: var(--qd-copy-word-break); overflow-wrap: var(--qd-copy-overflow-wrap); word-spacing: var(--qd-copy-word-spacing); }
+.qd-file-name { min-inline-size: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
+@media screen {
+  html .flex:has(> .qd-action-hint) { flex-wrap: wrap; align-items: center; }
+  html .flex:has(> .qd-action-hint) > .qd-btn { flex-shrink: 0; }
+  html .qd-action-hint { flex: 1 1 var(--qd-grid-min-width); min-inline-size: 0; overflow-wrap: anywhere; }
+}
 
 /* Shared feedback placement, including safe-area edges on installed apps. */
 :root {
@@ -816,6 +833,75 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
 .qd-toast[data-sonner-toast] [data-close-button]:focus-visible { outline: var(--qd-focus-outline-width) solid var(--qd-accent); outline-offset: var(--qd-space-1); box-shadow: none; }
 /* Central copy policy also overrides unlayered notification-library defaults. */
 .qd-toast { word-break: var(--qd-copy-word-break) !important; overflow-wrap: var(--qd-copy-overflow-wrap) !important; }
+
+/* Intrinsic screen sizing. Paper, SVG geometry and semantic table columns keep
+   their own contracts. Change these roles here, then regenerate and sync. */
+@media screen {
+  html :is(.qd-grid-kpi, .qd-grid-stat) {
+    min-inline-size: 0;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--qd-kpi-min-width)), 1fr));
+  }
+  html :is(.qd-responsive-grid, .grid:has(> .qd-field), .grid:has(> .qd-kpi)) {
+    --qd-responsive-columns: repeat(auto-fit, minmax(min(100%, max(var(--qd-grid-min-width), calc((100% - (var(--qd-grid-columns, 2) - 1) * var(--qd-grid-gap)) / var(--qd-grid-columns, 2) - .5px))), 1fr));
+    display: grid;
+    min-inline-size: 0;
+    grid-template-columns: var(--qd-responsive-columns);
+    gap: var(--qd-grid-gap);
+  }
+  html :is(.qd-responsive-grid.qd-grid-kpi, .qd-responsive-grid:has(> .qd-kpi), .grid:has(> .qd-kpi)) { --qd-grid-min-width: var(--qd-kpi-min-width); }
+  html .qd-form-grid--four { --qd-grid-columns: 4; }
+  html .grid:is(:has(> .qd-field), :has(> .qd-kpi))[class*="grid-cols-3"] { --qd-grid-columns: 3; }
+  html .grid:is(:has(> .qd-field), :has(> .qd-kpi))[class*="grid-cols-4"] { --qd-grid-columns: 4; }
+  html .grid:is(:has(> .qd-field), :has(> .qd-kpi))[class*="grid-cols-5"] { --qd-grid-columns: 5; }
+  html .grid:is(:has(> .qd-field), :has(> .qd-kpi))[class*="grid-cols-6"] { --qd-grid-columns: 6; }
+  /* A spanning field is a full row at every width, never an implicit column. */
+  html .grid:has(> .qd-field) > [class*="col-span-"] { grid-column: 1 / -1; }
+  :where(.qd-responsive-grid, .qd-intrinsic-grid, .qd-grid-kpi, .qd-grid-stat, .grid:has(> .qd-field), .grid:has(> .qd-kpi)) > *,
+  :where(.qd-field, [data-shell], .qd-card, .qd-panel, .qd-dialog-body, .qd-drawer-body) {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+  /* 표 칸은 낱말 너비 밑으로 줄지 않게 한다. 위의 anywhere 가 칸까지 물려 내려오면 표가 열 너비를
+     계산할 때 한 글자까지 줄일 수 있다고 여겨, 폰에서 「설비번호」 가 「설 / 비번 / 호」 로 쪼개졌다.
+     break-word 는 넘칠 때만 끊고 열 너비 계산에는 끼지 않는다(2026-10-22 세 제품 실측 · 새 넘침 0). */
+  html :where(th, td, [role="columnheader"], [role="cell"]) { overflow-wrap: break-word; }
+  :where(main, [role="main"]) fieldset { min-inline-size: 0; }
+  html :is(.qd-input, .qa-input, .qd-field, .qd-combobox-trigger) {
+    box-sizing: border-box;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  /* break-word: anywhere 이면 좁은 칸에서 단추 글이 「심각 / 도」 처럼 한 글자씩 끊겼다(같은 실측). */
+  html :is(.qd-btn, .qd-text-action, .qd-choice, .qd-filter-submit, .qd-filter-clear) {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  html .qd-btn { line-height: var(--qd-control-leading); }
+  textarea.qd-input {
+    field-sizing: content;
+    max-block-size: var(--qd-textarea-max-height);
+    overflow-y: auto;
+  }
+  html .qd-dialog-content {
+    inline-size: min(100%, var(--qd-dialog-width));
+    max-inline-size: calc(100dvw - 2 * var(--qd-overlay-screen-inset));
+    max-block-size: calc(100dvh - 2 * var(--qd-overlay-screen-inset));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* Positioning stays independent of transform-based enter/exit animations. */
+  html .qd-dialog-content--centered { translate: -50% -50%; }
+  html .qd-drawer-content { max-inline-size: 100dvw; max-block-size: 100dvh; }
+  html :is(.qd-dialog-body, .qd-drawer-body) { overflow: auto; min-block-size: 0; }
+  html :is(.qd-dialog-header, .qd-dialog-actions, .qd-drawer-header, .qd-drawer-actions) {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  html :is(.qd-table-scroll, .qa-scroll-table) { position: relative; min-inline-size: 0; max-inline-size: 100%; overflow-x: auto; }
+  html .qd-table--editable { min-inline-size: var(--qd-editable-table-min-width); }
+  :where(main, [role="main"]) :where(img, video) { max-inline-size: 100%; object-fit: contain; }
+}
 
 /* Generated by tools/build-palette.mjs. Edit patterns/palette-overrides.json.
    The committed token snapshot remains the baseline. Screen only; paper keeps its own palette.
