@@ -2,8 +2,8 @@
 import CoreGraphics
 
 enum QDesignTypography {
-    static let hintPointSize: CGFloat = 13
-    static let wordmarkPointSize: CGFloat = 11
+    static let hintPointSize: CGFloat = 14
+    static let wordmarkPointSize: CGFloat = 12
     static let textInset: CGFloat = 24
 }
 

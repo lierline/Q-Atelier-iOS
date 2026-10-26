@@ -26,7 +26,7 @@
   --qd-icon-size: 20px;
   --qd-icon-size-sm: 16px;
   --qd-icon-align: -0.18em;
-  --qd-control-size: 13px;
+  --qd-control-size: 14px;
   --qd-control-pad-y: 11px;
   --qd-control-pad-x: 22px;
   --qd-control-pad-sm-y: 7px;
@@ -36,18 +36,18 @@
   --qd-field-gap: var(--qd-space-1);
   --qd-textarea-min-height: 80px;
   --qd-select-end-padding: calc(var(--qd-space-4) * 2);
-  --qd-title-size: 22px;
+  --qd-title-size: 24px;
   --qd-section-size: 16px;
   --qd-overlay-title-size: 18px;
-  --qd-row-title-size: 15px;
-  --qd-table-size: 13px;
+  --qd-row-title-size: 16px;
+  --qd-table-size: 14px;
   --qd-table-pad-y: 11px;
   --qd-table-pad-y-dense: var(--qd-space-2);
   --qd-table-pad-x: 12px;
-  --qd-table-scroll-max-height: 70vh;
+  --qd-table-scroll-max-height: 70dvh;
   --qd-table-header-layer: 2;
   --qd-table-description-min-width: 160px;
-  --qd-kpi-size: 36px;
+  --qd-kpi-size: 40px;
   --qd-kpi-min-size: 20px;
   --qd-kpi-fluid-size: 16cqw;
   --qd-motion-fast: 160ms;
@@ -294,8 +294,40 @@ select.qd-input { appearance: auto !important; background-image: none !important
 .qd-skeleton { border-radius: var(--qd-radius); background: var(--qd-surface2); animation: qd-skeleton-pulse 1.6s ease-in-out infinite; }
 @keyframes qd-skeleton-pulse { 50% { opacity: 0.5; } }
 
-/* Containers use a quiet edge. Repeated rows remain governed by q-design.list. */
-.qd-card { min-width: 0; border: 1px solid var(--qd-border); border-radius: var(--qd-radius); background: var(--qd-surface); color: var(--qd-text); box-shadow: none; }
+/* 카드 · 판 · 구역 카드는 장부형: 면 · 옆 선 · 아래 선 · 모서리 없이 **위 괘선 하나**
+   (2026-10-23 오너 결정 «3» · docs/08-paper.md). 카드가 위아래로 붙어도 선이 한 겹이라
+   문서의 장 머리처럼 읽힙니다. 표 상자 · 빈 칸은 q-design.list 의 위아래 괘선 그대로입니다.
+
+   모양은 변수로 읽습니다. 떠 있는 층(창 · 서랍 · 팝업 · 메뉴)과 «상자로 남길» 자리는 아래 묶음이
+   변수를 상자 값으로 바꿔, 그 안의 카드는 예전처럼 면 · 네 변 · 모서리를 가집니다.
+   상태 판(--accent · --ok · --warn · --danger)은 테두리 색이 뜻을 거들므로 상자로 남습니다.
+   변수는 선언한 자리에서 값이 정해져 아래로 물려 내려갑니다(상자 안의 카드도 상자). */
+:where(dialog, [role='dialog'], [role='alertdialog'], [role='menu'], [role='listbox'], [role='tooltip'], [data-radix-popper-content-wrapper],
+  .qd-dialog-content, .qd-drawer-content, .qd-popover, .qd-tooltip,
+  .qd-card--box, .qd-panel--box, .qd-panel--accent, .qd-panel--ok, .qd-panel--warn, .qd-panel--danger) {
+  --qd-card-face: var(--qd-surface);
+  --qd-card-rule: 1px;
+  --qd-card-radius: var(--qd-radius-card, var(--qd-radius));
+  --qd-card-fill: var(--qd-surface);
+}
+/* 고른 칸은 면과 네 변으로 고른 것을 알립니다 */
+:where(.qd-card, .qd-panel):is([aria-current]:not([aria-current='false']), [aria-pressed='true'], [aria-selected='true']) {
+  --qd-card-face: var(--qd-surface);
+  --qd-card-rule: 1px;
+  --qd-card-radius: var(--qd-radius-card, var(--qd-radius));
+  --qd-card-fill: var(--qd-surface);
+}
+/* Repeated rows remain governed by q-design.list. 면이 없으니 표의 따라오는 머리글이 덮을 바탕은 화면 바탕입니다. */
+.qd-card {
+  min-width: 0;
+  border: 1px solid var(--qd-border);
+  border-width: var(--qd-card-rule, 1px 0 0);
+  border-radius: var(--qd-card-radius, 0);
+  background: var(--qd-card-face, transparent);
+  --qd-table-fill: var(--qd-card-fill, var(--qd-bg));
+  color: var(--qd-text);
+  box-shadow: none;
+}
 .qd-card-header, .qd-card-content, .qd-card-footer { padding: var(--qd-space-6); }
 .qd-card-header + .qd-card-content, .qd-card-content + .qd-card-footer { padding-top: 0; }
 .qd-card-title { margin: 0; font-size: var(--qd-section-size); font-weight: 600; line-height: 1.4; letter-spacing: 0; }
@@ -332,7 +364,7 @@ select.qd-input { appearance: auto !important; background-image: none !important
 .qd-calendar-day[data-in-range='true'] { background: var(--qd-surface2); }
 .qd-calendar-day[aria-current='date'] { border-color: var(--qd-ctl); }
 .qd-calendar-day[aria-pressed='true'] { background: var(--qd-text); color: var(--qd-bg); font-weight: 600; }
-.qd-calendar-weekday { color: var(--qd-muted); text-align: center; font-size: var(--qd-caption-size); line-height: 2; }
+.qd-calendar-weekday { color: var(--qd-muted); text-align: center; font-size: var(--qd-caption-size); line-height: 1.6; }
 
 .qd-mobile-header { position: sticky; top: 0; display: flex; align-items: center; gap: var(--qd-space-3); min-height: var(--qd-mobile-header-height); padding: var(--qd-space-2) var(--qd-space-4); border-bottom: 1px solid var(--qd-border); background: var(--qd-bg); color: var(--qd-text); }
 .qd-mobile-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--qd-section-size); font-weight: 600; }
@@ -454,15 +486,9 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-font-display-stack: var(--qd-font-family-display);
   --qd-brand-font: var(--qd-font-family-brand);
   --qd-spacing-unit: 0.25rem;
-  --qd-font-weight-thin: 100;
-  --qd-font-weight-extralight: 200;
-  --qd-font-weight-light: 300;
   --qd-font-weight-normal: 400;
   --qd-font-weight-medium: 500;
   --qd-font-weight-semibold: 600;
-  --qd-font-weight-bold: 700;
-  --qd-font-weight-extrabold: 800;
-  --qd-font-weight-black: 900;
   --qd-tracking-tighter: -.05em;
   --qd-tracking-tight: -.025em;
   --qd-tracking-normal: 0em;
@@ -470,15 +496,7 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-tracking-wider: .05em;
   --qd-tracking-widest: .1em;
   --qd-space-unit: 4px;
-  --qd-line-height-none: 1;
   --qd-leading-none: 1;
-  --qd-leading-heading: 1.3;
-  --qd-leading-notice: 1.55;
-  --qd-line-height-tight: 1.25;
-  --qd-line-height-snug: 1.375;
-  --qd-line-height-normal: 1.5;
-  --qd-line-height-relaxed: 1.625;
-  --qd-line-height-loose: 2;
   /* Rectangular surfaces share one radius, regardless of utility size name. */
   --qd-radius-sm: var(--qd-radius);
   --qd-radius-md: var(--qd-radius);
@@ -542,30 +560,16 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-space-5-5: calc(var(--qd-space-unit) * 5.5);
   --qd-space-6-5: calc(var(--qd-space-unit) * 6.5);
   --qd-space-7-5: calc(var(--qd-space-unit) * 7.5);
-  --qd-font-size-8: 8px;
-  --qd-font-size-9: 9px;
-  --qd-font-size-10: 10px;
-  --qd-font-size-11: 11px;
   --qd-font-size-12: 12px;
-  --qd-font-size-13: 13px;
   --qd-font-size-14: 14px;
-  --qd-font-size-15: 15px;
   --qd-font-size-16: 16px;
-  --qd-font-size-17: 17px;
   --qd-font-size-18: 18px;
-  --qd-font-size-19: 19px;
   --qd-font-size-20: 20px;
-  --qd-font-size-22: 22px;
   --qd-font-size-24: 24px;
-  --qd-font-size-26: 26px;
   --qd-font-size-28: 28px;
-  --qd-font-size-30: 30px;
   --qd-font-size-32: 32px;
-  --qd-font-size-36: 36px;
-  --qd-font-size-38: 38px;
   --qd-font-size-40: 40px;
   --qd-font-size-48: 48px;
-  --qd-font-size-80: 80px;
   --qd-ribbon-full-opacity-1: var(--qd-background-ribbon-primary-opacity);
   --qd-ribbon-full-opacity-2: var(--qd-background-ribbon-secondary-opacity);
   --qd-ribbon-ambient-opacity-1: calc(var(--qd-background-ribbon-primary-opacity) * .5);
@@ -580,9 +584,7 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-auth-theme-layer: 50;
   --qd-leading-tight: 1.2;
   --qd-leading-snug: 1.4;
-  --qd-leading-normal: 1.5;
   --qd-leading-relaxed: 1.6;
-  --qd-leading-loose: 1.7;
   --qd-scrollbar-size: 10px;
   --qd-scrollbar-inset: 3px;
   --qd-main-band-height: 68px;
@@ -593,18 +595,19 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-ribbon-width-1: 200;
   --qd-ribbon-width-2: 120;
   --qd-reading-width: 820px;
-  --qd-reading-line-height: 1.85;
+  --qd-reading-line-height: 1.6;
   --qd-document-title-size: 28px;
   --qd-radius-mark: 6px;
   --qd-radius-circle: 9999px;
-  --qd-leading-xs: 1.333333;
-  --qd-leading-sm: 1.428571;
-  --qd-leading-lg: 1.555556;
-  --qd-leading-xl: 1.4;
-  --qd-leading-2xl: 1.333333;
-  --qd-leading-3xl: 1.2;
-  --qd-leading-4xl: 1.111111;
-  --qd-leading-display: 1;
+  --qd-leading-xs: var(--qd-leading-snug);
+  --qd-leading-sm: var(--qd-leading-snug);
+  --qd-leading-base: var(--qd-leading-relaxed);
+  --qd-leading-lg: var(--qd-leading-snug);
+  --qd-leading-xl: var(--qd-leading-tight);
+  --qd-leading-2xl: var(--qd-leading-tight);
+  --qd-leading-3xl: var(--qd-leading-tight);
+  --qd-leading-4xl: var(--qd-leading-tight);
+  --qd-leading-display: var(--qd-leading-none);
   --qd-main-pad-mobile-x: 16px;
   --qd-main-pad-mobile-y: 24px;
   --qd-main-band-z: 20;
@@ -619,7 +622,6 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-chart-point-radius: 3.5px;
   --qd-chart-point-radius-active: 5.5px;
   --qd-chart-label-size: 12px;
-  --qd-font-size-34: 34px;
   --qd-font-size-60: 60px;
   --qd-font-size-72: 72px;
   --qd-font-size-96: 96px;
@@ -630,9 +632,15 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-field-key-size: 24px;
   --qd-auth-eyebrow-tracking: 2.5px;
   --qd-auth-clock-tracking: 1.5px;
-  --qd-auth-footer-line-height: 1.9;
+  --qd-auth-footer-line-height: 1.6;
+  --qd-auth-sublink-height: 32px;
+  --qd-auth-social-size: 32px;
+  --qd-auth-social-icon-size: 16px;
+  --qd-auth-social-icon-stroke: 1.8;
+  --qd-auth-link-underline-offset: 3px;
+  --qd-auth-legal-underline-offset: 2px;
   --qd-auth-subhead-size: 14px;
-  --qd-auth-subhead-line-height: 1.7;
+  --qd-auth-subhead-line-height: 1.6;
   --qd-auth-field-height: var(--qd-field-control-height);
   --qd-auth-card-shadow: none;
   --qd-auth-card-corner-display: none;
@@ -645,7 +653,7 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-watermark-tile-width: 620px;
   --qd-watermark-tile-height: 360px;
   --qd-watermark-opacity: 0.04;
-  --qd-watermark-font-size: 13px;
+  --qd-watermark-font-size: 14px;
   --qd-watermark-font-weight: 600;
   --qd-watermark-tracking: 0.06em;
   --qd-watermark-angle: -24deg;
@@ -653,19 +661,6 @@ html :is(input, textarea):is(:autofill, :-webkit-autofill):disabled {
   --qd-install-transition: 320ms;
   --qd-focus-ring-width: 3px;
   --qd-focus-ring-alpha: 34%;
-  --qd-line-height-12: 16px;
-  --qd-line-height-14: 20px;
-  --qd-line-height-16: 24px;
-  --qd-line-height-18: 28px;
-  --qd-line-height-20: 28px;
-  --qd-line-height-24: 32px;
-  --qd-line-height-30: 36px;
-  --qd-line-height-36: 40px;
-  --qd-line-height-48: 1;
-  --qd-line-height-60: 1;
-  --qd-line-height-72: 1;
-  --qd-line-height-96: 1;
-  --qd-line-height-128: 1;
 }
 
 /* Common role weights must outrank product resets and generated literal weights.
@@ -684,10 +679,10 @@ html .qd-card-title, html .qd-dialog-title, html .qd-drawer-title { font-weight:
   --qd-empty-padding-y: 96px;
   --qd-empty-padding-y-compact: 32px;
   --qd-empty-padding-x: 24px;
-  --qd-empty-title-size: 22px;
+  --qd-empty-title-size: 24px;
   --qd-empty-title-size-compact: 16px;
   --qd-empty-description-size: var(--qd-control-size);
-  --qd-empty-description-leading: 1.7;
+  --qd-empty-description-leading: 1.6;
   --qd-empty-description-max-width: 460px;
   --qd-empty-description-gap: 10px;
   --qd-empty-action-gap: 18px;
@@ -712,7 +707,7 @@ html .qd-tab.px-2\.5 { padding-left: calc(var(--qd-tab-padding-x) * 5 / 9) !impo
 html .qd-tab[aria-selected='true'], html .qd-tab[aria-current='page'], html .qd-tab--active { font-weight: var(--qd-font-weight-semibold); }
 html .qd-empty { padding: var(--qd-empty-padding-y) var(--qd-empty-padding-x) !important; }
 html .qd-empty--compact { padding-top: var(--qd-empty-padding-y-compact) !important; padding-bottom: var(--qd-empty-padding-y-compact) !important; }
-html .qd-empty-title { font-family: var(--qd-font-family-ui) !important; font-size: var(--qd-empty-title-size) !important; font-weight: var(--qd-font-weight-bold) !important; margin: 0 !important; }
+html .qd-empty-title { font-family: var(--qd-font-family-ui) !important; font-size: var(--qd-empty-title-size) !important; font-weight: var(--qd-font-weight-semibold) !important; margin: 0 !important; }
 html .qd-empty--compact .qd-empty-title { font-size: var(--qd-empty-title-size-compact) !important; }
 html .qd-empty-desc { font-size: var(--qd-empty-description-size) !important; line-height: var(--qd-empty-description-leading) !important; max-width: var(--qd-empty-description-max-width) !important; margin: var(--qd-empty-description-gap) auto 0 !important; }
 html .qd-empty-actions { margin-bottom: 0 !important; }
@@ -803,7 +798,7 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
   --qd-copy-word-break: keep-all;
   --qd-copy-overflow-wrap: break-word;
   --qd-copy-word-spacing: normal;
-  --qd-native-wordmark-size: 11px;
+  --qd-native-wordmark-size: 12px;
   --qd-native-text-inset: 24px;
 }
 @media screen {
@@ -943,9 +938,9 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
   --qd-auth-mark-size: 200px;
   --qd-auth-mark-size-phone: 64px;
   --qd-auth-name-size: 28px;
-  --qd-auth-name-size-phone: 22px;
+  --qd-auth-name-size-phone: 24px;
   --qd-auth-line-size: 14px;
-  --qd-auth-line-size-phone: 13px;
+  --qd-auth-line-size-phone: 14px;
   --qd-auth-intro-ease: cubic-bezier(0.45, 0, 0.2, 1);
   --qd-auth-intro-smooth: cubic-bezier(0.37, 0, 0.63, 1);
   --qd-auth-intro-sheen-ease: cubic-bezier(0.5, 0, 0.3, 1);
@@ -1013,8 +1008,8 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
-.qd-auth-ident { position: relative; z-index: 1; text-align: center; line-height: 1.3; }
-.qd-auth-name { margin: 0; font-family: var(--qd-font-family-ui); font-size: var(--qd-auth-name-size); font-weight: var(--qd-font-weight-bold); letter-spacing: -0.015em; word-spacing: normal; color: var(--qd-text); }
+.qd-auth-ident { position: relative; z-index: 1; text-align: center; line-height: 1.4; }
+.qd-auth-name { margin: 0; font-family: var(--qd-font-family-ui); font-size: var(--qd-auth-name-size); font-weight: var(--qd-font-weight-semibold); letter-spacing: -0.015em; word-spacing: normal; color: var(--qd-text); }
 .qd-auth-line { margin: var(--qd-space-2) 0 0; font-family: var(--qd-font-family-ui); font-size: var(--qd-auth-line-size); letter-spacing: 0; word-spacing: normal; color: color-mix(in oklab, var(--qd-text) 60%, transparent); }
 .qd-auth-phone { flex-direction: column; align-items: center; gap: var(--qd-space-3); margin-bottom: var(--qd-space-7); }
 .qd-auth-phone .qd-auth-mark { width: var(--qd-auth-mark-size-phone); }
@@ -1057,6 +1052,59 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
 @media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
   [data-qd-intro="on"] .qd-auth-panel { animation: qd-auth-open var(--qd-auth-open-for) var(--qd-auth-intro-smooth) var(--qd-auth-open-at) backwards; }
 }
+
+/* ── 로그인 폼 아래 · 바닥글 (2026-10-22 오빠 «배치 규칙 통일» · 값은 Q-Atelier 기준) ──
+   세 제품이 같은 차례 · 같은 간격 · 같은 글 크기를 쓴다. 제품마다 다른 것은 글 내용과 강조색(--qd-accent)뿐이고,
+   제품에 없는 칸은 그리지 않는다(빈자리를 남기지 않는다). 숫자는 위 칸과의 사이(px).
+     폼 아래 줄      .qd-auth-after        폼에서 14 · 가운데
+       보조 글귀     .qd-auth-sublink      비밀번호 찾기 · 로그인으로 돌아가기. 점선 밑줄 · 보이는 높이 32 · 터치는 qd-touch-hit 로 44
+       다음 할 일    .qd-auth-help         → 와 한 줄. 화살표는 .qd-auth-help-arrow, 누르는 낱말은 .qd-auth-help-link. 보조 글귀 다음이면 22
+     바닥글          .qd-auth-foot         폼 아래 줄에서 28 · 위 가는 선 · 안쪽 16
+       ©             첫 줄(이름표 없음)
+       만든 사람     .qd-auth-foot-credit  2 · 이름은 .qd-auth-foot-name(강조색)
+       바깥 고리     .qd-auth-foot-social  12 · 32 칸 · 사이 8 · 폰 폭과 터치에서는 44 칸
+       법적 고지     .qd-auth-foot-legal   8 · 밑줄 글귀(qd-touch-hit)
+       고지 글       .qd-auth-foot-note    10 · 줄 간격 1.7 · 낱말 단위로 접고 줄 길이를 고른다
+       권리 영문     .qd-auth-foot-caps    6
+*/
+.qd-auth-after { display: flex; flex-direction: column; align-items: center; margin-top: var(--qd-space-3-5); text-align: center; }
+.qd-auth-sublink {
+  display: inline-flex; align-items: center; min-height: var(--qd-auth-sublink-height); padding: 0 var(--qd-space-2);
+  border: 0; border-bottom: var(--qd-border-width) dashed var(--qd-border); border-radius: 0; background: none;
+  font-family: var(--qd-font-family-ui); font-size: var(--qd-caption-size); line-height: var(--qd-leading-relaxed);
+  color: var(--qd-muted); text-decoration: none; word-spacing: normal; cursor: pointer; transition: color var(--qd-motion-fast) ease;
+}
+.qd-auth-sublink:hover { color: var(--qd-text); }
+.qd-auth-help { font-family: var(--qd-font-family-ui); font-size: var(--qd-caption-size); line-height: var(--qd-leading-relaxed); color: var(--qd-muted); word-spacing: normal; word-break: keep-all; text-wrap: balance; }
+.qd-auth-sublink + .qd-auth-help { margin-top: var(--qd-space-5-5); }
+.qd-auth-help-arrow { margin-right: var(--qd-space-1); color: var(--qd-accent); }
+.qd-auth-help-link { padding: 0; border: 0; background: none; font: inherit; color: var(--qd-accent); text-decoration: underline; text-underline-offset: var(--qd-auth-link-underline-offset); cursor: pointer; }
+.qd-auth-foot {
+  margin-top: var(--qd-space-7); padding-top: var(--qd-space-4); border-top: var(--qd-border-width) solid var(--qd-border);
+  text-align: center; font-family: var(--qd-font-family-ui); font-size: var(--qd-caption-size); line-height: var(--qd-auth-footer-line-height);
+  color: var(--qd-muted); word-spacing: normal;
+}
+.qd-auth-foot-credit { margin-top: var(--qd-space-0-5); }
+.qd-auth-foot-name { font-weight: var(--qd-font-weight-medium); color: var(--qd-accent); white-space: nowrap; }
+.qd-auth-foot-social { display: flex; justify-content: center; gap: var(--qd-space-2); margin-top: var(--qd-space-3); }
+.qd-auth-foot-social > a {
+  display: inline-flex; align-items: center; justify-content: center; width: var(--qd-auth-social-size); height: var(--qd-auth-social-size);
+  border-radius: var(--qd-radius); color: var(--qd-muted); text-decoration: none;
+  transition: color var(--qd-motion-fast) ease, background var(--qd-motion-fast) ease;
+}
+.qd-auth-foot-social > a:hover { color: var(--qd-accent); background: color-mix(in oklab, var(--qd-accent) 6%, transparent); }
+.qd-auth-foot-social svg { width: var(--qd-auth-social-icon-size); height: var(--qd-auth-social-icon-size); }
+.qd-auth-foot-social svg[stroke="currentColor"] { stroke-width: var(--qd-auth-social-icon-stroke); }
+/* 폰 폭과 터치에서는 칸 자체를 44 로. 사이가 8 이라 ::after 로 넓히면 이웃 고리의 자리와 겹친다 */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .qd-auth-foot-social > a { width: var(--qd-control-height); height: var(--qd-control-height); }
+}
+.qd-auth-foot-legal { margin-top: var(--qd-space-2); }
+.qd-auth-foot-legal a { color: var(--qd-muted); text-decoration: underline; text-underline-offset: var(--qd-auth-legal-underline-offset); }
+.qd-auth-foot-legal a:hover { color: var(--qd-text); }
+/* 좁은 폭에서 낱말 하나만 다음 줄로 떨어지지 않게(2026-10-22 폰 375 실측 · Q-Carnet 「도구이며,」) 낱말 단위로 접고 줄 길이를 고른다 */
+.qd-auth-foot-note { margin-top: var(--qd-space-2-5); line-height: var(--qd-leading-relaxed); word-break: keep-all; text-wrap: balance; }
+.qd-auth-foot-caps { margin-top: var(--qd-space-1-5); }
 
 /* Generated by tools/build-palette.mjs. Edit patterns/palette-overrides.json.
    The committed token snapshot remains the baseline. Screen only; paper keeps its own palette.
@@ -1132,7 +1180,7 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
 .qd-offline-card { width: 100%; max-width: var(--qd-auth-form-width); text-align: center; }
 .qd-offline-logo { width: var(--qd-space-18); height: var(--qd-space-18); object-fit: contain; display: block; margin: 0 auto var(--qd-space-7); }
 .qd-offline h1 { margin: 0 0 var(--qd-space-3); font-size: var(--qd-title-size); font-weight: var(--qd-font-weight-semibold); letter-spacing: -.015em; }
-.qd-offline p { margin: 0 0 var(--qd-space-8); font-size: var(--qd-body-size); line-height: var(--qd-leading-loose); color: var(--qd-subtle); }
+.qd-offline p { margin: 0 0 var(--qd-space-8); font-size: var(--qd-body-size); line-height: var(--qd-leading-relaxed); color: var(--qd-subtle); }
 .qd-offline-action { display: inline-flex; justify-content: center; align-items: center; min-height: var(--qd-control-height); padding: var(--qd-space-3) var(--qd-space-7); border: 1px solid var(--qd-ctl); border-radius: var(--qd-radius); background: var(--qd-surface); color: var(--qd-text); font-size: var(--qd-control-size); font-weight: var(--qd-font-weight-medium); text-decoration: none; }
 .qd-offline-action:hover { background: var(--qd-surface2); }
 .qd-offline-action:focus-visible { outline: 2px solid var(--qd-accent); outline-offset: 3px; }
