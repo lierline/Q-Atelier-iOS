@@ -673,7 +673,7 @@ html .qd-card-title, html .qd-dialog-title, html .qd-drawer-title { font-weight:
 :root {
   --qd-choice-padding-y: 7px;
   --qd-choice-padding-x: 14px;
-  --qd-choice-line-height: normal;
+  --qd-choice-line-height: var(--qd-leading-snug);
   --qd-tab-padding-y: 12px;
   --qd-tab-padding-x: 18px;
   --qd-empty-padding-y: 96px;
@@ -886,6 +886,7 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
   }
   html .qd-btn { line-height: var(--qd-control-leading); }
   textarea.qd-input {
+    line-height: var(--qd-leading-relaxed);
     field-sizing: content;
     max-block-size: var(--qd-textarea-max-height);
     overflow-y: auto;
