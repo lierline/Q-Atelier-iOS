@@ -168,6 +168,10 @@ html[data-theme='light'] {
   transition: color var(--qd-motion-fast), background var(--qd-motion-fast);
 }
 .qd-text-action:hover { color: var(--qd-text); text-decoration: underline; text-underline-offset: 4px; }
+/* 이동 글귀(2026-10-27 오너 결정 «F»): 안내 문구 · 구역 머리 옆에 홀로 선 «다른 화면으로 가는» 글귀. 흐린 글귀는 설명 문장과
+   구별되지 않았다. 본문 먹색 · 굵기 600 · 끝 꺾쇠 아이콘으로 가른다. 줄마다 되풀이되는 열기 · 보기와 취소 · 뒤로는 기본 글귀 그대로. */
+.qd-text-action--go { gap: var(--qd-space-1); color: var(--qd-text); font-weight: var(--qd-font-weight-semibold); }
+.qd-text-action--go > svg { flex: none; }
 :where(.qd-control-icon, .qd-dialog-close, .qd-text-action, .qd-choice, .qd-calendar-day, .qd-mobile-menu):focus-visible {
   outline: 2px solid var(--qd-accent);
   outline-offset: 2px;
