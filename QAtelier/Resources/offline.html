@@ -33,6 +33,7 @@
   --qd-control-pad-sm-x: 14px;
   --qd-body-size: 14px;
   --qd-caption-size: 12px;
+  --qd-tag-min-width: 6.5em;
   --qd-field-gap: var(--qd-space-1);
   --qd-textarea-min-height: 80px;
   --qd-select-end-padding: calc(var(--qd-space-4) * 2);
@@ -47,7 +48,17 @@
   --qd-table-scroll-max-height: 70dvh;
   --qd-table-header-layer: 2;
   --qd-table-description-min-width: 160px;
+  --qd-table-grow-min-width: 8em;
+  /* 지표 값은 사다리 네 단 중 하나로만 선다 (2026-10-27 카르넷 정밀 감사 D1). 전에는 16cqw 로 칸 폭을
+     따라 22.88 · 21.6 · 36.72px 처럼 사다리 밖 크기가 나왔다. 칸 폭(.qd-kpi 는 inline-size 컨테이너)에 따라
+     40 · 32 · 28 · 24 로 내려간다. 네 값 모두 docs/03 의 아홉 단 안이다 */
   --qd-kpi-size: 40px;
+  --qd-kpi-size-lg: 32px;
+  --qd-kpi-size-md: 28px;
+  --qd-kpi-size-sm: 24px;
+  /* 🔴 아래 둘은 아뜰리에 지표 부품(component-implementations/atelier/lib/design/components.tsx 의 inline clamp)이 아직
+     읽는다. 그 부품을 위 네 단으로 옮기면 함께 걷는다(추출기 extract-screen.mjs 의 Z.kpiValue 정규식도 같이). 카르넷 ·
+     메종의 .qd-kpi-value 는 더 이상 쓰지 않는다 */
   --qd-kpi-min-size: 20px;
   --qd-kpi-fluid-size: 16cqw;
   --qd-motion-fast: 160ms;
@@ -99,11 +110,49 @@
 .qd-input { display: block; border-radius: var(--qd-radius); font-size: var(--qd-control-size); background: var(--qd-surface); color: var(--qd-text); }
 .qd-section-title { font-size: var(--qd-section-size); }
 .qd-field-label, .qd-tag { font-size: var(--qd-caption-size); }
+/* 알약은 글자 수와 상관없이 같은 크기(2026-10-27 오너 지시 «알약 크기를 정본에서 통일성 있게»). 한 표 칸에서
+   «종료» 49px · «재단 완료» 73px 로 갈렸다. 바닥은 «4글자 + 상태 점» 이 같은 크기가 되는 6.5em(12px 배지 78px).
+   카르넷 43화면 452개를 세니 4글자 이하가 95% 였고, 그보다 긴 드문 이름만 늘어난다. em 이라 배지 크기를 따른다 */
+.qd-tag { min-width: var(--qd-tag-min-width); }
 .qd-tab { font-size: var(--qd-control-size); }
 .qd-page-head-title { font-size: var(--qd-title-size); }
 .qd-table { font-size: var(--qd-table-size); }
+/* 표 열 폭 규칙 «표 하나에 늘어나는 열 하나» (2026-10-28 오너 결정 · 카르넷 표 41개 실측).
+   열 폭을 아무도 정하지 않으면 브라우저가 남는 폭을 «가장 긴 글이 있는 열» 에 비례로 주어 표마다 생김새가 갈린다
+   (홈 «마감 대기» 는 글 폭 603px 에 남는 518px 가 작업일 37% · 진행 알약 26% 로 갔다).
+   그래서 표의 주인 열 하나만 남는 폭을 받고 줄바꿈하며, 나머지 열은 글 폭으로 줄바꿈 없이 선다.
+   · 늘어나는 열은 표에 data-grow="N"(1부터) 으로 적는다. 적지 않으면 첫 열. 셀에 .qd-col-grow 를 직접 거는 길도 남긴다
+     (두 열이 함께 늘어나야 하는 드문 표). 칸을 합친 셀([colspan]) · 설명 열(.qd-table-description)도 줄바꿈한다.
+   · 표는 두 결이다(2026-10-28 오너 결정). 열이 전부 짧은 «기록 · 수치» 표는 data-grow="0": 어느 열도 auto 가 아니라서
+     브라우저가 남는 폭을 모든 열에 같은 몫으로 나눈다(7장 «표»). 0 에 걸리는 nth-child 규칙을 두지 말 것.
+   · width: 1% 는 «내용 폭만 차지하라» 는 오래된 표 배치 관용구다. 늘어나는 열의 바닥 8em 은 폰에서 주인 열이 너무 좁아지지 않게(12em 이면 발주 표가 1440 에서 30px 넘쳤다).
+   · 적는 표(.qd-table--editable)는 입력 칸이 제 폭을 쥐므로 이 규칙 밖이다. 폰에서는 열을 숨기지 않고 .qd-table-scroll 로 굴린다. */
+.qd-table { width: 100%; table-layout: auto; }
+.qd-table:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td) { width: 1%; white-space: nowrap; }
+.qd-table:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):is(.qd-col-grow, .qd-table-description, [colspan]),
+.qd-table:not(.qd-table--editable):not([data-grow]):not(:has(.qd-col-grow)) > :is(thead, tbody, tfoot) > tr > :is(th, td):first-child,
+.qd-table[data-grow="1"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(1),
+.qd-table[data-grow="2"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(2),
+.qd-table[data-grow="3"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(3),
+.qd-table[data-grow="4"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(4),
+.qd-table[data-grow="5"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(5),
+.qd-table[data-grow="6"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(6),
+.qd-table[data-grow="7"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(7),
+.qd-table[data-grow="8"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(8),
+.qd-table[data-grow="9"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(9),
+.qd-table[data-grow="10"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(10),
+.qd-table[data-grow="11"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(11),
+.qd-table[data-grow="12"]:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(12) {
+  width: auto; min-width: var(--qd-table-grow-min-width); white-space: normal;
+}
+/* 글 폭 칸 안의 단추 · 글 단추는 낱말 사이에서 꺾이지 않는다. 기초(foundation.css)가 단추를 normal 로 두는 것은
+   좁은 칸에서 한 글자씩 끊기지 않게 한 것인데, 글 폭(1%) 칸은 내용 폭을 그대로 받으므로 «변경 항목 0» 이 두 줄로 꺾였다 (2026-10-28) */
+html .qd-table:not(.qd-table--editable) > :is(thead, tbody, tfoot) > tr > :is(th, td):not(.qd-col-grow) :is(.qd-btn, .qd-text-action) { white-space: nowrap; }
 .qd-table td, .qd-table .qd-td { padding: var(--qd-table-pad-y) var(--qd-table-pad-x); }
-.qd-kpi-value { font-size: clamp(var(--qd-kpi-min-size), var(--qd-kpi-fluid-size), var(--qd-kpi-size)); }
+.qd-kpi-value { font-size: var(--qd-kpi-size); }
+@container (width < 260px) { .qd-kpi-value { font-size: var(--qd-kpi-size-lg); } }
+@container (width < 200px) { .qd-kpi-value { font-size: var(--qd-kpi-size-md); } }
+@container (width < 150px) { .qd-kpi-value { font-size: var(--qd-kpi-size-sm); } }
 html[data-theme='light'] {
   --qd-bg: var(--qd-bg-src, var(--qa-bg, #faf9f6));
   --qd-surface: var(--qd-surface-src, var(--qa-surface, #ffffff));
@@ -136,6 +185,9 @@ html[data-theme='light'] {
   border-color: var(--qd-border) !important;
   cursor: default;
 }
+/* 잠긴 칸 · 꺼진 칸에는 회색 안내를 띄우지 않는다. 빈 칸의 «예: …» 가 적힌 값처럼 읽힌다
+   (우리 디자인 규칙 S10 · 2026-10-27). 아뜰리에는 In · Txt 부품이 안내를 빼고, 두 제품은 이 줄이 가린다. */
+.qd-input:is([readonly], :disabled)::placeholder { color: transparent; }
 .qd-control-icon, .qd-dialog-close, .qd-mobile-menu {
   display: inline-flex;
   align-items: center;
@@ -289,8 +341,11 @@ html[data-theme='light'] {
 :where(.qd-notice, .qd-toast)[data-tone='success'], :where(.qd-notice, .qd-toast)[data-kind='success'], :where(.qd-notice, .qd-toast)[data-type='success'] { --qd-status: var(--qd-ok); }
 :where(.qd-notice, .qd-toast)[data-tone='warning'], :where(.qd-notice, .qd-toast)[data-kind='warning'], :where(.qd-notice, .qd-toast)[data-type='warning'] { --qd-status: var(--qd-warn); }
 :where(.qd-notice, .qd-toast)[data-tone='neutral'] { --qd-status: var(--qd-borderHi); }
-.qd-toast { box-shadow: var(--qd-shadow-overlay); }
-.qd-field-error { margin-top: var(--qd-field-gap) !important; color: var(--qd-danger); font-size: var(--qd-caption-size); line-height: 1.6 !important; letter-spacing: 0 !important; }
+.qd-toast { box-shadow: var(--qd-shadow-overlay); --qd-toast-line: calc(var(--qd-control-size) * 1.6); }
+/* The dismiss control keeps its full target but centres on the first text line,
+   so a one-line toast is not stretched to the control height. */
+.qd-toast > .qd-dialog-close { margin-block: calc((var(--qd-toast-line) - var(--qd-control-height)) / 2); }
+.qd-toast > .qd-text-action { margin-block: calc((var(--qd-toast-line) - var(--qd-control-height-sm)) / 2); }.qd-field-error { margin-top: var(--qd-field-gap) !important; color: var(--qd-danger); font-size: var(--qd-caption-size); line-height: 1.6 !important; letter-spacing: 0 !important; }
 .qd-field-hint { margin-top: var(--qd-space-1); color: var(--qd-muted); font-size: var(--qd-caption-size); line-height: 1.6; }
 /* Equivalent fields use the same label gap and multiline baseline in every product. */
 .qd-field-label { margin-bottom: var(--qd-field-gap); }
@@ -381,9 +436,20 @@ select.qd-input { appearance: auto !important; background-image: none !important
 .qd-mobile-header { position: sticky; top: 0; display: flex; align-items: center; gap: var(--qd-space-3); min-height: var(--qd-mobile-header-height); padding: var(--qd-space-2) var(--qd-space-4); border-bottom: 1px solid var(--qd-border); background: var(--qd-bg); color: var(--qd-text); }
 .qd-mobile-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--qd-section-size); font-weight: 600; }
 
+/* 머리줄의 «뒤로» 는 폰에서만 보인다(아래 640 분기). 기본값은 분기보다 앞에 둬야 분기가 이긴다 */
+.qd-mobile-back { display: none; }
 @media (max-width: 640px) {
   :root { --qd-overlay-padding: 20px; }
   .qd-dialog-actions, .qd-drawer-actions { row-gap: var(--qd-space-3); }
+  /* 탭이 많은 화면(카르넷 설정 14개)은 폰에서 한 줄로 두고 옆으로 민다. 쌓이면 머리만 195px 를 먹었다
+     (2026-10-27 카르넷 정밀 감사 U11). 잘린 쪽은 data-cut 마스크(foundation.css)가 말하고, 켜진 탭은 제품
+     스크립트가 보이는 자리로 민다. 옆으로 넘겨 보는 내용(캐러셀 · F8)이 아니라 차림표다 */
+  .qd-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .qd-tabs > * { flex: 0 0 auto; }
+  .qd-tabs::-webkit-scrollbar { display: none; }
+  /* 폰에서는 떠 있는 «뒤로» 대신 머리줄의 단추로(2026-10-27 카르넷 정밀 감사 U13). 떠 있는 단추가 표 끝 칸 · 지표를
+     덮었다. 모양은 메뉴 단추(.qd-mobile-menu)와 같고, 넓은 화면에서는 숨는다 */
+  .qd-mobile-back { display: inline-flex; }
 }
 .qd-pager[data-layout="contained"] {
   margin-top: 0;
@@ -736,6 +802,7 @@ html .qd-skeleton, html .qa-skeleton { animation-duration: var(--qd-skeleton-dur
 @media (max-width: 640px) {
   html :is(.qd-btn, .qa-btn, .qa-btn-secondary, .qd-input, .qa-input, .qd-choice, .qd-tab, .qd-text-action, .qd-combobox-option, .qd-filter-input, .qd-filter-select, .qd-filter-submit, .qd-filter-clear, .qd-pager-btn, .qa-touch-44) { min-height: var(--qd-control-height) !important; }
   html :is(.qd-control-icon, .qd-dialog-close, .qd-mobile-menu, .qa-touch-44sq) { min-width: var(--qd-control-height) !important; min-height: var(--qd-control-height) !important; }
+  html .qd-toast > .qd-text-action { margin-block: calc((var(--qd-toast-line) - var(--qd-control-height)) / 2); }
   /* 두 글자 탭(「전체」 · 「지원」)은 좁은 여백(px-2.5)에서 42 였다(2026-10-22 폰 실측). 폭도 44 를 채우고 글은 가운데 */
   html .qd-tab { min-width: var(--qd-control-height) !important; justify-content: center; text-align: center; }
 }
@@ -839,7 +906,7 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
 .qd-toast[data-sonner-toast] [data-close-button] {
   left: auto !important;
   right: var(--qd-space-3) !important;
-  top: var(--qd-space-3) !important;
+  top: calc(var(--qd-space-3) + (var(--qd-toast-line) - var(--qd-control-height)) / 2) !important;
   width: var(--qd-control-height) !important;
   height: var(--qd-control-height) !important;
   transform: none !important;
@@ -850,6 +917,9 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
 }
 .qd-toast[data-sonner-toast] [data-close-button]:hover { background: var(--qd-surface2) !important; color: var(--qd-text) !important; }
 .qd-toast[data-sonner-toast] [data-close-button]:focus-visible { outline: var(--qd-focus-outline-width) solid var(--qd-accent); outline-offset: var(--qd-space-1); box-shadow: none; }
+/* The dismiss control sits near the toast edge, so its focus ring is drawn inside
+   where a toast that hides its overflow cannot clip it. */
+.qd-toast > :is(.qd-dialog-close, .qd-text-action):focus-visible { outline-offset: calc(var(--qd-focus-outline-width) * -1); box-shadow: none; }
 /* Central copy policy also overrides unlayered notification-library defaults. */
 .qd-toast { word-break: var(--qd-copy-word-break) !important; overflow-wrap: var(--qd-copy-overflow-wrap) !important; }
 
@@ -897,6 +967,9 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
     overflow-wrap: break-word;
   }
   html .qd-btn { line-height: var(--qd-control-leading); }
+  /* 입력칸도 단추와 같은 줄 간격(1.4). 적지 않으면 브라우저 기본 normal(약 1.15 · 글꼴마다 다름)이 서서
+     한 줄의 단추 · 입력칸 높이가 어긋났다(2026-10-27 카르넷 정밀 감사 D3 · 1440 에서 76칸) */
+  html .qd-input { line-height: var(--qd-control-leading); }
   textarea.qd-input {
     line-height: var(--qd-leading-relaxed);
     field-sizing: content;
@@ -919,6 +992,13 @@ html label:has(> input[type='file'].sr-only:focus-visible) {
     flex-wrap: wrap;
   }
   html :is(.qd-table-scroll, .qa-scroll-table) { position: relative; min-inline-size: 0; max-inline-size: 100%; overflow-x: auto; }
+  /* 옆으로 잘린 표 · 탭 줄은 잘린 쪽 끝을 흐리게 해 «더 있다» 를 말한다(2026-10-27 카르넷 정밀 감사 U12 · U11).
+     잘림은 제품의 작은 스크립트가 data-cut="start end" 로 적는다(Q-Forge components/scroll-cut.tsx · 다른 제품도
+     같은 속성만 적으면 된다). 스크립트가 없으면 아무 표시도 없다. 면이 아니라 마스크라 그림자 금지(F1)와 어긋나지 않는다. 마스크는 알파만 보므로 색은 currentcolor 로 두어
+     테마 검사(색 리터럴)에 걸리지 않게 한다 */
+  html :is(.qd-table-scroll, .qa-scroll-table, .qd-tabs)[data-cut~="end"] { -webkit-mask-image: linear-gradient(to right, currentcolor calc(100% - 40px), transparent); mask-image: linear-gradient(to right, currentcolor calc(100% - 40px), transparent); }
+  html :is(.qd-table-scroll, .qa-scroll-table, .qd-tabs)[data-cut~="start"] { -webkit-mask-image: linear-gradient(to left, currentcolor calc(100% - 40px), transparent); mask-image: linear-gradient(to left, currentcolor calc(100% - 40px), transparent); }
+  html :is(.qd-table-scroll, .qa-scroll-table, .qd-tabs)[data-cut~="start"][data-cut~="end"] { -webkit-mask-image: linear-gradient(to right, transparent, currentcolor 40px, currentcolor calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, currentcolor 40px, currentcolor calc(100% - 40px), transparent); }
   html .qd-table--editable { min-inline-size: var(--qd-editable-table-min-width); }
   :where(main, [role="main"]) :where(img, video) { max-inline-size: 100%; object-fit: contain; }
 }
